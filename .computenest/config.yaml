@@ -2,6 +2,11 @@ Service:
   RegionId: cn-hangzhou
   DeployType: ros
   DeployMetadata:
+    SupplierDeployMetadata:
+      ArtifactRelation:
+        'aliyun_3_x64_20G_alibase_20240528.vhd':
+          ArtifactId: ${Artifact.EcsImage.ArtifactId}
+          ArtifactVersion: ${Artifact.EcsImage.ArtifactVersion}
     TemplateConfigs:
       - Name: 单机版
         Url: 'ros_templates/template.yaml'
@@ -87,6 +92,7 @@ ImageBuilder:
     Tags: [ ]
     CommandContent: |-
       #!/bin/bash
+      sudo yum -y update
       yum check-update --security && yum -y upgrade --security
       yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
       yum makecache fast
@@ -111,5 +117,5 @@ ImageBuilder:
           ]
       }
       EOF
-      sudo systemctl daemon-reload
-      sudo systemctl restart docker
+      systemctl daemon-reload
+      systemctl restart docker
