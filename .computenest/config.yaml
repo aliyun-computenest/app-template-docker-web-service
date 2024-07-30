@@ -1,0 +1,28 @@
+Service:
+  RegionId: cn-hangzhou
+  DeployType: ros
+  DeployMetadata:
+    SupplierDeployMetadata:
+      FileArtifactRelation:
+        '{{ computenest::file::aliyun-computenest_artifact-docker }}':
+          ArtifactId: ${Artifact.Artifact_1.ArtifactId}
+          ArtifactVersion: ${Artifact.Artifact_1.ArtifactVersion}
+    TemplateConfigs:
+      - Name: 单机版
+        Url: 'ros_templates/template.yaml'
+        AllowedRegions:
+          - cn-shanghai
+          - cn-beijing
+          - cn-hangzhou
+  ServiceType: private
+  ServiceInfo:
+    Locale: zh-CN
+    ShortDescription: demo
+    Image: 'resources/icons/service_logo.png'
+Artifact:
+  Artifact_1:
+    ArtifactType: File
+    ArtifactName: aliyun-computenest_artifact-docker
+    ArtifactProperty:
+      RegionId: cn-hangzhou
+      Url: 'resources/artifact_resources/file/aliyun-computenest_artifact-docker.tar.gz'
