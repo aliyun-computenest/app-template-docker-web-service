@@ -94,3 +94,22 @@ ImageBuilder:
       yum -y install docker-ce
       systemctl enable docker
       systemctl start docker
+
+      mkdir -p /etc/docker
+      tee /etc/docker/daemon.json <<-'EOF'
+      {
+          "registry-mirrors": [
+              "https://0vmzj3q6.mirror.aliyuncs.com",
+              "https://docker.m.daocloud.io",
+              "https://mirror.baidubce.com",
+              "https://dockerproxy.com",
+              "https://mirror.iscas.ac.cn",
+              "https://huecker.io",
+              "https://dockerhub.timeweb.cloud",
+              "https://noohub.ru",
+              "https://vlgh0kqj.mirror.aliyuncs.com"
+          ]
+      }
+      EOF
+      sudo systemctl daemon-reload
+      sudo systemctl restart docker
