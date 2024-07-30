@@ -2,27 +2,95 @@ Service:
   RegionId: cn-hangzhou
   DeployType: ros
   DeployMetadata:
-    SupplierDeployMetadata:
-      FileArtifactRelation:
-        '{{ computenest::file::aliyun-computenest_artifact-docker }}':
-          ArtifactId: ${Artifact.Artifact_1.ArtifactId}
-          ArtifactVersion: ${Artifact.Artifact_1.ArtifactVersion}
     TemplateConfigs:
       - Name: 单机版
         Url: 'ros_templates/template.yaml'
         AllowedRegions:
-          - cn-shanghai
           - cn-beijing
           - cn-hangzhou
+          - cn-shanghai
+          - ap-southeast-1
+          - cn-qingdao
+          - cn-zhangjiakou
+          - cn-huhehaote
+          - cn-wulanchabu
+          - cn-nanjing
+          - cn-shenzhen
+          - cn-heyuan
+          - cn-guangzhou
+          - cn-fuzhou
+          - cn-wuhan-lr
+          - cn-chengdu
+          - cn-hongkong
+          - ap-northeast-1
+          - ap-northeast-2
+          - ap-southeast-2
+          - ap-southeast-3
+          - ap-southeast-6
+          - ap-southeast-5
+          - ap-southeast-7
+          - us-east-1
+          - us-west-1
+          - eu-west-1
+          - me-east-1
+          - eu-central-1
   ServiceType: private
   ServiceInfo:
     Locale: zh-CN
     ShortDescription: demo
     Image: 'resources/icons/service_logo.png'
 Artifact:
-  Artifact_1:
-    ArtifactType: File
-    ArtifactName: aliyun-computenest_artifact-docker
+  EcsImage:
+    ArtifactType: EcsImage
+    ArtifactName: alilinux-docker-ce
+    Description: alilinux-docker-ec
     ArtifactProperty:
-      RegionId: cn-hangzhou
-      Url: 'resources/artifact_resources/file/aliyun-computenest_artifact-docker.tar.gz'
+      RegionId: ${ImageBuilder.EcsImage.RegionId}
+      ImageId: ${ImageBuilder.EcsImage.SourceImageId}
+    SupportRegionIds:
+      - cn-beijing
+      - cn-hangzhou
+      - cn-shanghai
+      - ap-southeast-1
+      - cn-qingdao
+      - cn-zhangjiakou
+      - cn-huhehaote
+      - cn-wulanchabu
+      - cn-nanjing
+      - cn-shenzhen
+      - cn-heyuan
+      - cn-guangzhou
+      - cn-fuzhou
+      - cn-wuhan-lr
+      - cn-chengdu
+      - cn-hongkong
+      - ap-northeast-1
+      - ap-northeast-2
+      - ap-southeast-2
+      - ap-southeast-3
+      - ap-southeast-6
+      - ap-southeast-5
+      - ap-southeast-7
+      - us-east-1
+      - us-west-1
+      - eu-west-1
+      - me-east-1
+      - eu-central-1
+ImageBuilder:
+  EcsImage:
+    RegionId: ap-southeast-1
+    SourceImageId: aliyun_3_x64_20G_alibase_20240528.vhd
+    InstanceType: ecs.c6.large
+    InternetMaxBandwidthOut: 5
+    CommandType: RunShellScript
+    Timeout: 10800
+    Tags: [ ]
+    CommandContent: |-
+      #!/bin/bash
+      yum check-update --security && yum -y upgrade --security
+      yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+      yum makecache fast
+      yum install -y wget curl jq unzip git
+      yum -y install docker-ce
+      systemctl enable docker
+      systemctl start docker

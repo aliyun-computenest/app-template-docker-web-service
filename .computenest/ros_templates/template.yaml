@@ -167,9 +167,6 @@ Resources:
         Fn::Sub:
           - |
             #!/bin/bash
-            # 源代码通过computenest-cli被打包为tar.gz包，并发布为部署物
-            wget '{{ computenest::file::aliyun-computenest_artifact-docker }}' -O aliyun-computenest_artifact-docker.tar.gz > /var/log/download.log
-            tar -zxvf aliyun-computenest_artifact-docker.tar.gz && cd "$(tar -tzf aliyun-computenest_artifact-docker.tar.gz | head -1 | awk -F'/' '{print $1}')"
             echo "start run command"
             echo "${AdminPassword}"
 
