@@ -47,8 +47,8 @@ Service:
 Artifact:
   EcsImage:
     ArtifactType: EcsImage
-    ArtifactName: alilinux-docker-ce
-    Description: alilinux-docker-ec
+    ArtifactName: aliyun_3.2104_docker_26
+    Description: Aliyun 3.2104 Docker 26
     ArtifactProperty:
       RegionId: ${ImageBuilder.EcsImage.RegionId}
       ImageId: ${ImageBuilder.EcsImage.SourceImageId}
