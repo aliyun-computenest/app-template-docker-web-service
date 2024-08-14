@@ -1,43 +1,318 @@
 ROSTemplateFormatVersion: '2015-09-01'
 Description:
-  en: Source Code Service Ros Template
-  zh-cn: 源代码服务模板
+  zh-cn: 部署Docker Web应用，支持弹性伸缩，支持单实例和高可用两种部署模式，可选部署数据库
+  en: Deploy docker web application, support auto scaling, support single node and high availability modes, with optional database depolyment
+Conditions:
+  HA:
+    'Fn::Equals':
+      - Ref: DeployMode
+      - HighAvailability
+  ProvisionDatabase:
+    Ref: ProvisionDatabase
+  NeedSslCertificate:
+    'Fn::Equals':
+      - Ref: ListenerProtocol
+      - HTTPS
+  UseSpot:
+    Ref: UseSpot
+  NotUseKeyPair:
+    Fn::Equals:
+      - ''
+      - Ref: KeyPairName
 Parameters:
-  PayType:
+  ApplicationSource:
     Type: String
     Label:
-      en: ECS Instance Charge Type
-      zh-cn: 付费类型
+      en: Source of application
+      zh-cn: 应用来源
+    AllowedValues:
+      - File 
+      - GitRepo
+      - Demo
+    Default: File
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        GitRepo:
+          en: Git Repository
+          zh-cn: Git仓库
+        File:
+          en: Zip File
+          zh-cn: 本地zip文件
+        Demo:
+          en: Demo Application
+          zh-cn: 示例应用
+  OssFileUrl:
+    Type: String
+    Label:
+      en: File location
+      zh-cn: 文件地址
+    Description:
+      en: Select zip file to upload to oss bucket, application manager uses oss file to deploy、update or rollback your application
+      zh-cn: 选择zip文件上传到OSS bucket，应用管理使用OSS文件部署、更新或者回滚您的应用
+    AssociationProperty: UploadFilesToUserBucket
+    AssociationPropertyMetadata:
+      Mode: normal
+      BucketName: applicationmanager-cn-hangzhou-1563457855438522
+      Multiple: false
+      Directory: false
+      ValueType: OSSUrl
+      ObjectNamePrefix: "artifacts/"
+      AddSuffix: true
+      SuffixFormat: YYYYMMDDHHmmss
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ApplicationSource}'
+            - File
+  IsPublicRepo:
+    Type: Boolean
+    Label:
+      en: Whether the git repository is public
+      zh-cn: 是否公开仓库
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ApplicationSource}'
+            - GitRepo
+    Default: false
+  PublicGitRepoUrl:
+    Type: String
+    Label:
+      zh-cn: "公开Git仓库地址，格式参考https://github.com/owner/repo.git"
+      en: "Public git repository address, format likes: https://github.com/owner/repo.git"
+    Description:
+      zh-cn: 请注意在中国大陆地域从GitHub仓库部署可能存在网络问题
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::And':
+            - 'Fn::Equals':
+              - '${ApplicationSource}'
+              - GitRepo
+            - 'Fn::Equals':
+              - '${IsPublicRepo}'
+              - true
+    AllowedPattern: '^(https:\/\/[^\s]+\.git)$'
+    Default: "https://github.com/owner/repo.git"
+  Platform:
+    Type: String
+    Label:
+      en: Git platform
+      zh-cn: Git平台
+    Description:
+      zh-cn: 请注意在中国大陆地域从GitHub仓库部署可能存在网络问题
+    AssociationProperty: ALIYUN::OOS::GitPlatform::Name
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::And':
+            - 'Fn::Equals':
+              - '${ApplicationSource}'
+              - GitRepo
+            - 'Fn::Equals':
+              - '${IsPublicRepo}'
+              - false
+  Owner:
+    Type: String
+    Label:
+      en: Owner
+      zh-cn: 所有者
+    AssociationProperty: ALIYUN::OOS::GitAccount::Name
+    AssociationPropertyMetadata:
+      Platform: '${Platform}'
+      Visible:
+        Condition:
+          'Fn::And':
+            - 'Fn::Equals':
+              - '${ApplicationSource}'
+              - GitRepo
+            - 'Fn::Equals':
+              - '${IsPublicRepo}'
+              - false
+    Default: ''
+  Repository:
+    Type: String
+    Label:
+      en: Repository
+      zh-cn: 仓库
+    AssociationProperty: ALIYUN::OOS::GitRepository::Name
+    AssociationPropertyMetadata:
+      Platform: '${Platform}'
+      Organization: '${Organization}'
+      Owner: '${Owner}'
+      Visible:
+        Condition:
+          'Fn::And':
+            - 'Fn::Equals':
+              - '${ApplicationSource}'
+              - GitRepo
+            - 'Fn::Equals':
+              - '${IsPublicRepo}'
+              - false
+    Default: ''
+  Branch:
+    Type: String
+    Label:
+      en: Branch
+      zh-cn: 代码分支
+    Default: 'main'
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ApplicationSource}'
+            - GitRepo
+  CommitHash:
+    Type: String
+    Label:
+      en: Git Commit
+      zh-cn: Git Commit
+    Description:
+      en: Input branch to get latest commit hash automatically
+      zh-cn: 输入分支后自动获取分支最新的Commit Hash
+    Default: ''
+    AssociationProperty: ALIYUN::OOS::GitBranch::CommitHash
+    AssociationPropertyMetadata:
+      Platform: ${Platform}
+      Owner: ${Owner}
+      RepoFullName: ${Repository}
+      RepoUrl: ${PublicGitRepoUrl}
+      Branch: ${Branch}
+      ReadOnly: true
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ApplicationSource}'
+            - GitRepo
+  DeployMode:
+    Type: String
+    Label:
+      en: Deploy mode
+      zh-cn: 部署模式
+    AllowedValues:
+      - SingleInstance
+      - HighAvailability
+    Default: SingleInstance
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        SingleInstance:
+          en: Single instance
+          zh-cn: 单实例
+        HighAvailability:
+          en: High availability
+          zh-cn: 高可用
+      DescriptionMapping:
+        SingleInstance:
+          zh-cn: 部署单台ECS，可选部署数据库。建议在开发测试环境使用单实例模式
+        HighAvailability:
+          zh-cn: 部署指定数量ECS，并加入伸缩组和应用负载均衡器，可选部署数据库。建议在生产环境使用高可用模式
+  VpcId:
+    Type: String
+    Description:
+      zh-cn: 请选择已有的VPC
+      en: Please select the existing VPC
+    Label:
+      zh-cn: 现有VPC的实例ID
+      en: Existing VPC ID
+    AssociationProperty: 'ALIYUN::ECS::VPC::VPCId'
+  ZoneId:
+    AssociationProperty: 'ALIYUN::ECS::Instance::ZoneId'
+    AssociationPropertyMetadata:
+      ExclusiveTo:
+        - ZoneId2
+    Type: String
+    Label:
+      zh-cn: 可用区1
+      en: Zone ID 1
+  ZoneId2:
+    AssociationProperty: 'ALIYUN::ECS::Instance::ZoneId'
+    Type: String
+    Default: ''
+    Label:
+      zh-cn: 可用区2
+      en: Zone ID2
+    AssociationPropertyMetadata:
+      ExclusiveTo:
+        - ZoneId
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${DeployMode}'
+            - HighAvailability
+  VSwitchId:
+    Description:
+      zh-cn: 选择可用区1的网络交换机
+      en: Choose existing network switch in zone 1.
+    Label:
+      zh-cn: 网络交换机ID 1
+      en: vSwitch ID 1
+    Type: String
+    AssociationProperty: 'ALIYUN::ECS::VSwitch::VSwitchId'
+    AssociationPropertyMetadata:
+      VpcId: '${VpcId}'
+      ZoneId: '${ZoneId}'
+  VSwitchId2:
+    Description:
+      zh-cn: 选择可用区2的网络交换机
+      en: Choose existing network switch in zone 2.
+    Label:
+      zh-cn: 网络交换机2
+      en: vSwitch ID 2
+    Type: String
+    Default: ''
+    AssociationProperty: 'ALIYUN::ECS::VSwitch::VSwitchId'
+    AssociationPropertyMetadata:
+      VpcId: '${VpcId}'
+      ZoneId: '${ZoneId2}'
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${DeployMode}'
+            - HighAvailability
+  ChargeType:
     Default: PostPaid
+    Label:
+      zh-cn: 付费模式
+      en: pay type
+    Description:
+      zh-cn: 按量付费建议搭配<a href='https://help.aliyun.com/zh/ecs/product-overview/savings-plans' target='_blank'>节省计划</a>或<a href='https://help.aliyun.com/zh/ecs/product-overview/reserved-instances' target='_blank'>预留实例券</a>来优化成本
+    Type: String
     AllowedValues:
       - PostPaid
       - PrePaid
     AssociationProperty: ChargeType
     AssociationPropertyMetadata:
-      LocaleKey: InstanceChargeType
-  PayPeriodUnit:
-    Type: String
-    Label:
-      en: Pay Period Unit
-      zh-cn: 购买资源时长周期
-    Default: Month
-    AllowedValues:
-      - Month
-      - Year
+      LocaleKey: ChargeType
+  PeriodUnit:
     AssociationProperty: PayPeriodUnit
     AssociationPropertyMetadata:
       Visible:
         Condition:
-          Fn::Not:
-            Fn::Equals:
-              - ${PayType}
+          'Fn::Not':
+            'Fn::Equals':
+              - '${ChargeType}'
               - PostPaid
-  PayPeriod:
-    Type: Number
+    Default: Month
+    AllowedValues:
+      - Month
     Label:
-      en: Period
-      zh-cn: 购买资源时长
+      zh-cn: 购买资源时长周期
+      en: Pay period unit
+    Type: String
+  Period:
+    AssociationProperty: PayPeriod
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Not':
+            'Fn::Equals':
+              - '${ChargeType}'
+              - PostPaid
     Default: 1
+    Label:
+      zh-cn: 云服务器预付费资源的购买时长
+      en: ECS instance pay period
     AllowedValues:
       - 1
       - 2
@@ -48,168 +323,874 @@ Parameters:
       - 7
       - 8
       - 9
-    AssociationProperty: PayPeriod
+      - 12
+      - 24
+      - 36
+      - 48
+      - 60
+    Type: Number
+  UseSpot:
+    Type: Boolean
+    Label:
+      zh-cn: 创建抢占式实例
+    Description:
+      zh-cn: 抢占式实例相对于按量付费实例最高能节约90%的实例成本，请注意<font color='blue'>抢占式实例有可能被回收</font>，请参考<a href='https://help.aliyun.com/zh/ecs/user-guide/overview-4' target='_blank'>什么是抢占式实例</a>
+    Default: false
     AssociationPropertyMetadata:
       Visible:
         Condition:
-          Fn::Not:
-            Fn::Equals:
-              - ${PayType}
-              - PostPaid
+          'Fn::Equals':
+            - '${ChargeType}'
+            - PostPaid
   EcsInstanceType:
     Type: String
     Label:
       en: Instance Type
       zh-cn: 实例类型
-    AssociationProperty: ALIYUN::ECS::Instance::InstanceType
+    Description:
+      zh-cn: 请参考：<a href='https://help.aliyun.com/zh/ecs/use-cases/best-practices-for-instance-type-selection' target='_blank'>ECS选型最佳实践</a>
+      en: 'please refer to: <a href=''https://www.alibabacloud.com/help/en/ecs/use-cases/best-practices-for-instance-type-selection'' target=''_blank''>Best practices for selecting ECS instance types</a>'
+    AssociationProperty: 'ALIYUN::ECS::Instance::InstanceType'
     AssociationPropertyMetadata:
-      InstanceChargeType: ${PayType}
+      ZoneId: '${ZoneId}'
+      InstanceChargeType: '${ChargeType}'
       Constraints:
         InstanceTypeFamily:
           - ecs.u1
           - ecs.e
-  InstancePassword:
-    NoEcho: true
+  SystemDiskCategory:
+    AssociationProperty: 'ALIYUN::ECS::Disk::SystemDiskCategory'
+    AssociationPropertyMetadata:
+      InstanceType: ${EcsInstanceType}
+      ZoneId: ${ZoneId}
+      LocaleKey: DiskCategory
+    Type: String
+    Label:
+      zh-cn: 系统盘类型
+      en: System disk type
+    Default: cloud_essd
+  SystemDiskSize:
+    Type: Number
+    Description:
+      zh-cn: '系统盘大小, 取值范围：[40, 500], 单位：GB'
+      en: 'System disk size, range of values: 40-500, units: GB'
+    Label:
+      zh-cn: 系统盘空间
+      en: System disk space
+    Default: 120 
+    MinValue: 40
+    MaxValue: 500
+  InternetMaxBandwidthOut:
+    Type: Number
+    Label:
+      zh-cn: ECS实例流量公网带宽
+      en: ECS instance internet max bandwidth out
+    Description:
+      zh-cn: 按流量计费。对于高可用部署，ECS实例上的公网仅用于下载应用部署物和软件，用户访问流量由负载均衡进入
+    MinValue: 1
+    MaxValue: 100
+    Default: 10
+  KeyPairName:
+    Label:
+      zh-cn: 密钥对（可选）
+      en: SSH key pair
+    Description:
+      zh-cn: 建议使用密钥对实现无密码登录，提高实例安全性
+    Type: String
+    AssociationProperty: 'ALIYUN::ECS::KeyPair::KeyPairName'
+    Default: ''
+  MinInstanceCount:
+    Type: Number
+    Label:
+      en: ECS instance count to create 
+      zh-cn: 创建ECS实例数量
+    Description:
+      zh-cn: 作为伸缩组的最小实例数，在部署时按指定的付费类型创建并加入伸缩组
+    Default: 1
+    MinValue: 1
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${DeployMode}'
+            - HighAvailability
+  MaxInstanceCount:
+    Type: Number
+    Label:
+      en: Maximum ECS instance count in scaling group
+      zh-cn: 伸缩组最大ECS实例数量
+    Description:
+      en: User needs to scale manually or set up automatic scaling rule
+      zh-cn: 部署完成后，用户可以手工扩缩容或配置自动伸缩规则。仅支持扩容按量付费实例
+    Default: 10
+    MinValue: 1
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${DeployMode}'
+            - HighAvailability
+  HostPort:
+    Type: Number
+    Label:
+      en: The port web service listens on host
+      zh-cn: Web服务在主机上监听的端口
+    MaxValue: 65535
+    MinValue: 0
+    Default: 80
+  BackendProtocol:
+    Type: String
+    Label:
+      en: Backend service protocol
+      zh-cn: 后端服务协议
+    Description:
+      zh-cn: 建议在后端服务采用HTTP协议，在应用负载均衡配置HTTPS协议
+    Default: HTTP
+    AllowedValues:
+      - HTTP
+      - HTTPS
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${DeployMode}'
+            - HighAvailability
+  ListenerProtocol:
+    Type: String
+    Label:
+      en: ALB listen protocl
+      zh-cn: 应用负载均衡监听的协议
+    Description:
+      zh-cn: 即最终用户访问Web服务时使用的协议；HTTP协议采用80端口，HTTPS协议采用443端口
+    AllowedValues:
+      - HTTP
+      - HTTPS
+    Default: HTTP
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${DeployMode}'
+            - HighAvailability
+  SslCertificate:
+    Type: String
+    Label:
+      en: ALB listener HTTPS SSL certificate
+      zh-cn: 应用负载均衡监听HTTPS使用的SSL证书
+    Default: ''
+    AssociationProperty: ALIYUN::CAS::Certificate::CertificateId
+    AssociationPropertyMetadata:
+      WithRegion: true
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ListenerProtocol}'
+            - HTTPS
+  ProvisionDatabase:
+    Type: Boolean
+    Label:
+      en: Provison database
+      zh-cn: 部署数据库
+    Default: false
+  Engine:
+    Type: String
+    Label:
+      zh-cn: 数据库实例引擎类型
+      en: Database instance engine type
+    Default: MySQL
+    AssociationProperty: "ALIYUN::RDS::Engine::EngineId"
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ProvisionDatabase}'
+            - true
+  EngineVersion:
+    Type: String
+    Label:
+      zh-cn: 数据库实例引擎版本
+      en: Database instance engine Version
+    Default: '8.0'
+    AssociationProperty: "ALIYUN::RDS::Engine::EngineVersion"
+    AssociationPropertyMetadata:
+      Engine: "${Engine}"
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ProvisionDatabase}'
+            - true
+  DBCategory:
+    Label:
+      zh-cn: 数据库实例系列
+      en: DB Category
+    Type: String
+    AllowedValues:
+      - Basic
+      - HighAvailability
+      - AlwaysOn
+      - Finance
+    Default: Basic
+    AssociationPropertyMetadata:
+      LocaleKey: RDSCategory
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ProvisionDatabase}'
+            - true
+  DBInstanceClass:
+    Label:
+      zh-cn: 数据库实例规格
+      en: RDS DB Instance Class
+    AssociationProperty: ALIYUN::RDS::Instance::InstanceType
+    AssociationPropertyMetadata:
+      ZoneId: ZoneId
+      Engine: Engine
+      EngineVersion: EngineVersion
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ProvisionDatabase}'
+            - true
+    Type: String
+    Default: 'mysql.n2e.medium.1'
+    Description:
+      zh-cn: 请参考：<a href='https://help.aliyun.com/document_detail/26312.html' target='_blank'>RDS主实例规格</a>
+      en: 'please refer to: <a href=''https://www.alibabacloud.com/help/doc-detail/26312.html'' target=''_blank''>RDS instance specification sheet</a>'
+  DBInstanceStorage:
+    Label:
+      zh-cn: 数据库实例存储
+      en: Database Storage
+    Type: Number
+    Description:
+      zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
+      en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
+    MinValue: 20
+    MaxValue: 2000
+    Default: 40
+    ConstraintDescription:
+      zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
+      en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ProvisionDatabase}'
+            - true
+  DBInstanceStorageType:
+    Label:
+      zh-cn: 数据库实例存储类型
+      en: Database Storage Type
     Type: String
     Description:
-      en: Server login password, Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
-      zh-cn: 服务器登录密码,长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
-    AllowedPattern: '^[a-zA-Z0-9-\(\)\`\~\!\@\#\$\%\^\&\*\_\-\+\=\|\{\}\[\]\:\;\<\>\,\.\?\/]*$'
-    Label:
-      en: Instance Password
-      zh-cn: 实例密码
-    ConstraintDescription:
-      en: Length 8-30, must contain three(Capital letters, lowercase letters, numbers, ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ Special symbol in)
-      zh-cn: 长度8-30，必须包含三项（大写字母、小写字母、数字、 ()`~!@#$%^&*_-+=|{}[]:;'<>,.?/ 中的特殊符号）
-    MinLength: 8
-    MaxLength: 30
-    AssociationProperty: ALIYUN::ECS::Instance::Password
-  ZoneId:
-    Type: String
-    Label:
-      en: Zone ID
-      zh-cn: 可用区ID
-    AssociationProperty: ALIYUN::ECS::Instance::ZoneId
-  VpcId:
-    Type: String
-    Label:
-      en: VPC ID
-      zh-cn: 专有网络VPC实例ID
-    AssociationProperty: 'ALIYUN::ECS::VPC::VPCId'
-  VSwitchId:
-    Type: String
-    Label:
-      en: VSwitch ID
-      zh-cn: 交换机实例ID
-    Default: ''
-    AssociationProperty: 'ALIYUN::ECS::VSwitch::VSwitchId'
+      zh-cn: 实例存储类型；<br>请参见详细信息：<a href='https://help.aliyun.com/document_detail/69795.html' target='_blank'><b><font color='blue'>存储类型</font></b></a>
+      en: The storage type of DB instance; see detail <a href='https://www.alibabacloud.com/help/en/apsaradb-for-rds/latest/storage-types' target='_blank'><b><font color=''blue''>Storage types</font></b></a>'
+    AllowedValues:
+      - local_ssd
+      - cloud_ssd
+      - cloud_essd
+      - cloud_essd2
+      - cloud_essd3
+    Default: cloud_essd
     AssociationPropertyMetadata:
-      VpcId: VpcId
-      ZoneId: ZoneId
-  AdminPassword:
+      ValueLabelMapping:
+        local_ssd:
+          en: Local SSD
+          zh-cn: 本地SSD盘
+        cloud_ssd:
+          en: Cloud SSD
+          zh-cn: SSD云盘
+        cloud_essd:
+          en: Cloud ESSD PL1
+          zh-cn: ESSD PL1云盘
+        cloud_essd2:
+          en: Cloud ESSD PL2
+          zh-cn: ESSD PL2云盘
+        cloud_essd3:
+          en: Cloud ESSD PL3
+          zh-cn: ESSD PL3云盘
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ProvisionDatabase}'
+            - true
+  DBUser:
     Type: String
-    AssociationProperty: ALIYUN::ECS::Instance::Password
-    Label: 管理员密码
-    NoEcho: True
+    Description:
+      en: Consist of 2 to 16 characters of lowercase letters, underline. Must begin with a letter and be end with an alphanumeric character
+      zh-cn: 由 2 到 16 个小写字母组成，下划线。必须以字母开头，以字母数字字符结尾
+    Label:
+      zh-cn: 数据库账号
+      en: Database Username
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ProvisionDatabase}'
+            - true
+    MaxLength: 16
+    MinLength: 2
+    Default: 'application'
+  DBPassword:
+    Type: String
+    AssociationProperty: 'ALIYUN::RDS::Instance::AccountPassword'
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ProvisionDatabase}'
+            - true
+    Label:
+      zh-cn: 数据库密码
+      en: Database Password
+    MaxLength: 32
+    MinLength: 8
+    NoEcho: true
+    Default: 'pleaseChangeThis'
+  AppUpdateBatchSize:
+    Type: Number
+    Label:
+      zh-cn: 应用程序更新每批次ECS实例数
+      en: Batch size of ECS application update
+    MinValue: 1
+    MaxValue: 1000
+    Default: 1
+  AppUpdatePauseTime:
+    Type: Number
+    Label:
+      zh-cn: 应用程序更新批次间的暂停时间，单位为秒
+      en: Pause time in seconds between application update batches
+    MinValue: 0
+    MaxValue: 3600
+    Default: 0
 Resources:
-  SecurityGroup:
-    Type: ALIYUN::ECS::SecurityGroup
+  EcsSecurityGroup:
+    Type: 'ALIYUN::ECS::SecurityGroup'
     Properties:
-      SecurityGroupName:
-        Ref: ALIYUN::StackName
       VpcId:
         Ref: VpcId
       SecurityGroupIngress:
-        - PortRange: 80/80
+        # 默认开放SSH登录
+        - PortRange: 22/22
           Priority: 1
           SourceCidrIp: 0.0.0.0/0
           IpProtocol: tcp
-          NicType: internet
-  InstanceGroup:
-    Type: ALIYUN::ECS::InstanceGroup
+        - SourceCidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          PortRange:
+            Fn::Sub:
+              - '${Port}/${Port}'
+              - Port:
+                  Ref: HostPort
+  Alb:
+    Type: 'ALIYUN::ALB::LoadBalancer'
+    Condition: HA
     Properties:
-      # 付费类型
+      VpcId:
+        Ref: VpcId
+      ZoneMappings:
+        - ZoneId:
+            Ref: ZoneId
+          VSwitchId:
+            Ref: VSwitchId
+        - ZoneId:
+            Ref: ZoneId2
+          VSwitchId:
+            Ref: VSwitchId2
+      AddressType: Internet
+      AddressIpVersion: IPv4
+      LoadBalancerEdition: Standard
+      LoadBalancerBillingConfig:
+        PayType: PostPay
+      LoadBalancerName:
+        Ref: ALIYUN::StackName
+  AlbServerGroup:
+    Type: 'ALIYUN::ALB::ServerGroup'
+    Condition: HA
+    Properties:
+      VpcId:
+        Ref: VpcId
+      Scheduler: Sch
+      StickySessionConfig:
+        CookieTimeout: 60
+        StickySessionEnabled: true
+        StickySessionType: Insert
+      HealthCheckConfig:
+        HealthCheckEnabled: true
+        UnhealthyThreshold: 3
+        HealthCheckMethod: HEAD
+        HealthCheckTimeout: 5
+        HealthCheckProtocol: HTTP
+        HealthCheckHttpVersion: HTTP1.1
+        HealthyThreshold: 3
+        HealthCheckConnectPort:
+          Ref: HostPort
+        HealthCheckPath: /
+        HealthCheckInterval: 2
+      Protocol:
+        Ref: BackendProtocol
+      ServerGroupType: Instance
+      ServerGroupName:
+        Ref: ALIYUN::StackName
+  AlbBackendServerAttachment:
+    DependsOn:
+      - EcsInstanceGroup
+    Type: 'ALIYUN::ALB::BackendServerAttachment'
+    Condition: HA
+    Properties:
+      ServerGroupId:
+        Fn::GetAtt:
+          - AlbServerGroup
+          - ServerGroupId
+      Servers:
+        Fn::MergeMapToList:
+          - ServerType:
+              - Ecs
+          - Port:
+            - Ref: HostPort
+          - Weight:
+              - 100
+          - ServerId:
+              'Fn::GetAtt':
+                - EcsInstanceGroup
+                - InstanceIds
+  AlbListener:
+    DependsOn:
+      - Alb
+    Type: 'ALIYUN::ALB::Listener'
+    Condition: HA
+    Properties:
+      DefaultActions:
+        - Type: ForwardGroup
+          ForwardGroupConfig:
+            ServerGroupTuples:
+              - ServerGroupId:
+                  Fn::GetAtt:
+                    - AlbServerGroup
+                    - ServerGroupId
+      ListenerPort:
+        Fn::If:
+          - NeedSslCertificate
+          - 443
+          - 80
+      RequestTimeout: 60
+      IdleTimeout: 60
+      LoadBalancerId:
+        Fn::GetAtt:
+          - Alb
+          - LoadBalancerId
+      ListenerProtocol: 
+        Ref: ListenerProtocol
+      Certificates:
+        Fn::If:
+          - NeedSslCertificate
+          - - Ref: SslCertificate
+          - Ref: ALIYUN::NoValue
+  InstanceRole:
+    Type: ALIYUN::RAM::Role
+    Properties:
+      RoleName:
+        Ref: ALIYUN::StackName
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - ecs.aliyuncs.com
+        Version: '1'
+      Policies:
+        - PolicyName:
+            Ref: ALIYUN::StackName
+          PolicyDocument:
+            Version: '1'
+            Statement:
+              - Action:
+                  - oss:GetObject
+                Resource:
+                  - Fn::Sub: 'acs:oss:${ALIYUN::Region}:${ALIYUN::AccountID}:applicationmanager-${ALIYUN::Region}-${ALIYUN::AccountID}/*'
+                Effect: Allow
+  EcsInstanceGroup:
+    Type: 'ALIYUN::ECS::InstanceGroup'
+    Properties:
+      UserData:
+        Fn::Sub:
+          - |-
+            #!/bin/bash
+            mkdir -p /opt/applicationmanager/bin /opt/applicationmanager/logs
+            LOG=/opt/applicationmanager/logs/install.log
+            echo "start deploying application" | tee $LOG
+            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
+            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DBUser}" "${DBPassword}" | tee $LOG
+          - DB_URL:
+              Fn::If:
+                - ProvisionDatabase
+                - Fn::GetAtt:
+                  - Database
+                  - InnerConnectionString
+                - ""
+      SystemDiskCategory:
+        Ref: SystemDiskCategory
+      VpcId:
+        Ref: VpcId
       InstanceChargeType:
-        Ref: PayType
+        Ref: ChargeType
+      SecurityGroupId:
+        Ref: EcsSecurityGroup
+      SystemDiskSize:
+        Ref: SystemDiskSize
+      ImageId: aliyun_3_9_x64_20G_alibase_20231219.vhd
       PeriodUnit:
-        Ref: PayPeriodUnit
+        Ref: PeriodUnit
+      VSwitchId:
+        Ref: VSwitchId
       Period:
-        Ref: PayPeriod
+        Ref: Period
+      InstanceType:
+        Ref: EcsInstanceType
+      ZoneId:
+        Ref: ZoneId
+      MaxAmount:
+        Ref: MinInstanceCount
+      InternetMaxBandwidthOut:
+        Ref: InternetMaxBandwidthOut
+      RamRoleName:
+        Fn::GetAtt:
+          - InstanceRole
+          - RoleName
+      SpotStrategy:
+        Fn::If:
+          - UseSpot
+          - SpotAsPriceGo
+          - NoSpot
+      KeyPairName:
+        Fn::If:
+          - NotUseKeyPair
+          - Ref: ALIYUN::NoValue
+          - Ref: KeyPairName
+  EssInstanceScalingGroupEnable:
+    Type: 'ALIYUN::ESS::ScalingGroupEnable'
+    Properties:
+      ScalingRuleArisExecuteVersion: '1'
+      ScalingConfigurationId:
+        Ref: EcsInstanceScalingConfiguration
+      InstanceIds:
+        'Fn::GetAtt':
+          - EcsInstanceGroup
+          - InstanceIds
+      ScalingGroupId:
+        Ref: EssInstanceScalingGroup
+    DependsOn:
+      - EcsInstanceScalingConfiguration
+      - EssInstanceScalingGroup
+  EcsInstanceScalingConfiguration:
+    Type: 'ALIYUN::ESS::ScalingConfiguration'
+    Properties:
+      UserData:
+        Fn::Sub:
+          - |-
+            #!/bin/bash
+            mkdir -p /opt/applicationmanager/bin /opt/applicationmanager/logs
+            LOG=/opt/applicationmanager/logs/install.log
+            echo "start deploying application" | tee $LOG
+            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
+            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DBUser}" "${DBPassword}" | tee $LOG
+          - DB_URL:
+              Fn::If:
+                - ProvisionDatabase
+                - Fn::GetAtt:
+                  - Database
+                  - InnerConnectionString
+                - ""
+      SystemDiskCategory:
+        Ref: SystemDiskCategory
+      SecurityGroupId:
+        Ref: EcsSecurityGroup
+      SystemDiskSize:
+        Ref: SystemDiskSize
+      ImageId: aliyun_3_9_x64_20G_alibase_20231219.vhd
+      ScalingGroupId:
+        Ref: EssInstanceScalingGroup
+      InstanceType:
+        Ref: EcsInstanceType
+      InternetMaxBandwidthOut: 
+        Ref: InternetMaxBandwidthOut
+      RamRoleName:
+        Fn::GetAtt:
+          - InstanceRole
+          - RoleName
+      SpotStrategy:
+        Fn::If:
+          - UseSpot
+          - SpotAsPriceGo
+          - NoSpot
+      KeyPairName:
+        Fn::If:
+          - NotUseKeyPair
+          - Ref: ALIYUN::NoValue
+          - Ref: KeyPairName
+  EssInstanceScalingGroup:
+    Type: 'ALIYUN::ESS::ScalingGroup'
+    Properties:
+      RemovalPolicys:
+        - NewestInstance
+      MinSize:
+        Ref: MinInstanceCount
+      MaxSize:
+        Ref: MaxInstanceCount
+      VSwitchIds:
+        Fn::If:
+          - HA
+          - - Ref: VSwitchId
+            - Ref: VSwitchId2
+          - - Ref: VSwitchId
+      ServerGroups:
+        Fn::If:
+          - HA
+          - - Type: ALB
+              Port: 
+                Ref: HostPort
+              ServerGroupId:
+                Ref: AlbServerGroup
+              Weight: 100
+          - Ref: ALIYUN::NoValue
+      DefaultCooldown: 300
+      MultiAZPolicy: BALANCE
+      DBInstanceIds:
+        Fn::If:
+          - ProvisionDatabase
+          - - Ref: Database
+          - Ref: ALIYUN::NoValue
+  Database:
+    Type: 'ALIYUN::RDS::DBInstance'
+    Condition: ProvisionDatabase
+    Properties:
       VpcId:
         Ref: VpcId
       VSwitchId:
         Ref: VSwitchId
+      Engine:
+        Ref: Engine
+      EngineVersion:
+        Ref: EngineVersion
+      DBInstanceClass:
+        Ref: DBInstanceClass
       ZoneId:
         Ref: ZoneId
+      DBInstanceStorage:
+        Ref: DBInstanceStorage
+      DBInstanceStorageType:
+        Ref: DBInstanceStorageType
+      MasterUsername:
+        Ref: DBUser
+      MasterUserPassword:
+        Ref: DBPassword
+      Category:
+        Ref: DBCategory
+      DBInstanceNetType: Intranet
+      PayType:
+        Ref: ChargeType
+      PeriodType:
+        Ref: PeriodUnit
+      Period:
+        Ref: Period
       SecurityGroupId:
-        Ref: SecurityGroup
-      ImageId: aliyun_3_x64_20G_alibase_20240528.vhd
-      Password:
-        Ref: InstancePassword
-      InstanceType:
-        Ref: EcsInstanceType
-      SystemDiskCategory: cloud_essd
-      SystemDiskSize: 200
-      InternetMaxBandwidthOut: 5
-      IoOptimized: optimized
-      MaxAmount: 1
-  RunInstallCommand:
-    Type: ALIYUN::ECS::RunCommand
+        Ref: EcsSecurityGroup
+      SecurityIPList: '127.0.0.1'
+  # 采用此种方式更新应用程序，要求更新期间不能进行弹性伸缩活动
+  EcsIntanceDataSource:
+    Type: 'DATASOURCE::ECS::Instances'
+    DependsOn: EssInstanceScalingGroupEnable
     Properties:
-      InstanceIds:
-        Fn::GetAtt:
-        - InstanceGroup
-        - InstanceIds
-      Type: RunShellScript
+      Tags:
+        - Key: 'acs:ros:stackId'
+          Value:
+            Ref: ALIYUN::StackId
+      RefreshOptions: Always
+  UpdateApplication:
+    Type: ALIYUN::ECS::RunCommand
+    UpdatePolicy:
+      RollingUpdate:
+        MaxBatchSize:
+          Ref: AppUpdateBatchSize
+        PauseTime:
+          Ref: AppUpdatePauseTime
+    Properties:
       Sync: true
-      Timeout: 3600
       CommandContent:
         Fn::Sub:
-          - |
+          - |-
             #!/bin/bash
-            echo "start run command"
-            echo "${AdminPassword}"
+            function check_update() {
+              version=$(cat /opt/applicationmanager/version)
+              if [ "${ApplicationSource}" == "File" ] && [ "${OssFileUrl}" == "$version" ]; then
+                echo "Found same oss file url, skip update" 
+                exit 0
+              fi
+              if [ "${ApplicationSource}" == "GitRepo" ] && [ "${CommitHash}" == "$version" ]; then
+                echo "Found same git commit hash, skip update" 
+                exit 0
+              fi
+              if [ "${ApplicationSource}" == "Demo" ] && [ "Demo" == "$version" ]; then
+                echo "Already deployed demo application, skip update" 
+                exit 0
+              fi
+            }
+            check_update
 
-            ARGUS_VERSION=3.5.7 /bin/bash -c "$(curl -sS https://cms-agent-${RegionId}.oss-${RegionId}-internal.aliyuncs.com/Argus/agent_install_ecs-1.7.sh)" >> /root/install_cms_agent.log 2>&1
-          - RegionId:
-              Ref: ALIYUN::Region
+            mkdir -p /opt/applicationmanager/bin /opt/applicationmanager/logs
+            LOG=/opt/applicationmanager/logs/update.log
+            echo "start updating application" | tee $LOG
+            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
+            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DBUser}" "${DBPassword}" | tee $LOG
+          - DB_URL:
+              Fn::If:
+                - ProvisionDatabase
+                - Fn::GetAtt:
+                  - Database
+                  - InnerConnectionString
+                - ""
+      Type: RunShellScript
+      InstanceIds:
+        Fn::GetAtt:
+          - EcsIntanceDataSource
+          - InstanceIds
+      Timeout: '3600'
 Outputs:
-  ServerAddress:
+  ApplicationDomainName:
+    Label:
+      en: application domain name
+      zh-cn: 应用域名
     Description:
-      en: ServerAddress.
-      zh-cn: 访问页面。
+      zh-cn: 高可用模式通过应用负载均衡提供的域名访问，单实例模式通过实例公网IP访问
     Value:
-      Fn::Sub:
-        - 'http://${ServerAddress}:80'
-        - ServerAddress:
-            Fn::Select:
-            - 0
-            - Fn::GetAtt:
-              - InstanceGroup
-              - PublicIps
+      Fn::If:
+        - HA
+        - Fn::Sub:
+          - '${Protocol}://${AlbAddress}'
+          - AlbAddress:
+              Fn::GetAtt:
+                - Alb
+                - DNSName
+            Protocol:
+              Fn::If:
+                - NeedSslCertificate
+                - https
+                - http
+        - Fn::Sub:
+          - 'http://${PublicIpAddress}:${Port}'
+          - PublicIpAddress:
+              Fn::Select:
+                - 0
+                - Fn::GetAtt:
+                    - EcsInstanceGroup
+                    - PublicIps
+            Port:
+              Ref: HostPort
+  InstallLocation:
+    Label:
+      en: Location of application installation
+      zh-cn: 应用安装位置
+    Value: /opt/applicationmanager
+  DatabaseEnvVar:
+    Condition: ProvisionDatabase
+    Label:
+      en: Location of database environment variable file
+      zh-cn: 数据库环境变量文件位置
+    Description:
+      en: The database username, password and connection string is saved in this file. docker-compose.yaml file can refer to this env file and read configuration from environment variables
+      zh-cn: 数据库账户名、密码和连接串保存在此文件中。docker-compose.yaml中可以引用此环境变量文件读取数据库配置
+    Value: /opt/applicationmanager/env/database_env
+Mappings: {}
 Metadata:
-  ALIYUN::ROS::Interface:
+  'ALIYUN::ROS::Interface':
     ParameterGroups:
       - Parameters:
-          - PayType
-          - PayPeriodUnit
-          - PayPeriod
+          - ApplicationSource
+          - OssFileUrl
+          - IsPublicRepo
+          - PublicGitRepoUrl
+          - Platform
+          - Owner
+          - Repository
+          - Branch
+          - CommitHash
         Label:
-          default: 付费类型配置
+          default:
+            en: Application configuration
+            zh-cn: 应用配置
       - Parameters:
+          - HostPort
+          - AppUpdateBatchSize
+          - AppUpdatePauseTime
+        Label:
+          default:
+            en: More application configuration
+            zh-cn: 更多应用配置
+        DefaultExpand: false
+      - Parameters:
+          - DeployMode
+        Label:
+          default:
+            en: Deploy mode
+            zh-cn: 云资源部署模式
+      - Parameters:
+          - ChargeType
+          - PeriodUnit
+          - Period
+          - UseSpot
+        Label:
+          default:
+            en: Cloud resource pay configuration
+            zh-cn: 云资源付费类型
+      - Parameters:
+          - MinInstanceCount
           - EcsInstanceType
-          - InstancePassword
         Label:
-          default: 资源配置
+          default:
+            zh-cn: ECS实例配置
+            en: ECS instance configuration
       - Parameters:
-          - ZoneId
+          - MaxInstanceCount
+          - SystemDiskCategory
+          - SystemDiskSize
+          - InternetMaxBandwidthOut
+          - KeyPairName
+        Label:
+          default:
+            zh-cn: 更多ECS实例和弹性配置
+            en: More ECS instance and elastic configuration
+        DefaultExpand: false
+      - Parameters:
+          - BackendProtocol
+          - ListenerProtocol
+          - SslCertificate
+        Label:
+          default:
+            zh-cn: 应用负载均衡配置
+            en: Application load balancer configuration
+        DefaultExpand: false
+      - Parameters:
+          - ProvisionDatabase
+          - Engine
+          - EngineVersion
+          - DBCategory
+          - DBInstanceClass
+          - DBInstanceStorageType
+          - DBInstanceStorage
+          - DBUser
+          - DBPassword
+        Label:
+          default:
+            zh-cn: 数据库配置
+            en: Database configuration
+        DefaultExpand: false
+      - Parameters:
           - VpcId
+          - ZoneId
           - VSwitchId
+          - ZoneId2
+          - VSwitchId2
         Label:
-          default: 可用区配置
-      - Parameters:
-          - AdminPassword
-        Label:
-          en: Software Configuration
-          zh-cn: 软件配置
-      
+          default:
+            zh-cn: 网络和可用区配置
+            en: Network and zone configuration

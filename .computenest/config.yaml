@@ -8,7 +8,7 @@ Service:
           ArtifactId: ${Artifact.EcsImage.ArtifactId}
           ArtifactVersion: ${Artifact.EcsImage.ArtifactVersion}
     TemplateConfigs:
-      - Name: 单机版
+      - Name: docker
         Url: 'ros_templates/template.yaml'
         AllowedRegions:
           - cn-beijing
@@ -42,7 +42,8 @@ Service:
   ServiceType: private
   ServiceInfo:
     Locale: zh-CN
-    ShortDescription: demo
+    Name: Docker Web应用
+    ShortDescription: 基于Alibaba Cloud Linux3部署用户自定义的Docker Web应用。支持用户上传源代码zip包或者从指定Git仓库拉取源代码部署、更新应用。支持单实例或高可用两种部署模式。
     Image: 'resources/icons/service_logo.png'
 Artifact:
   EcsImage:
@@ -86,16 +87,16 @@ ImageBuilder:
     RegionId: ap-southeast-1
     SourceImageId: aliyun_3_x64_20G_alibase_20240528.vhd
     InstanceType: ecs.c6.large
-    InternetMaxBandwidthOut: 5
+    InternetMaxBandwidthOut: 10
     CommandType: RunShellScript
     Timeout: 10800
     Tags: [ ]
     CommandContent: |-
       #!/bin/bash
-      sudo yum -y update
+      yum -y update
       yum check-update --security && yum -y upgrade --security
       yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-      yum makecache fast
+      yum makecache
       yum install -y wget curl jq unzip git
       yum -y install docker-ce
       systemctl enable docker
@@ -119,3 +120,7 @@ ImageBuilder:
       EOF
       systemctl daemon-reload
       systemctl restart docker
+
+      # install ossutil, need unzip or 7zip
+      curl https://gosspublic.alicdn.com/ossutil/install.sh | bash
+
