@@ -39,6 +39,41 @@ Service:
           - eu-west-1
           - me-east-1
           - eu-central-1
+  OperationMetadata:
+    ModifyParametersConfig:
+      - TemplateName: docker
+        Operation:
+          - Name: 更新应用程序
+            Description: 上传zip源代码包或者从Git仓库拉取更新，滚动更新ECS实例上的应用程序
+            Type: Custom
+            Parameters:
+              - OssFileUrl
+              - Branch
+              - CommitHash
+              - AppUpdateBatchSize
+              - AppUpdatePauseTime
+          - Name: 修改部署设置
+            Description: 修改资源部署设置
+            Type: Custom
+            Parameters:
+              - BackendProtocol
+              - DBCategory
+              - DBInstanceClass
+              - DBInstanceStorage
+              - DBInstanceStorageType
+              - EcsInstanceType
+              - Engine
+              - EngineVersion
+              - HostPort
+              - InternetMaxBandwidthOut
+              - KeyPairName
+              - ListenerProtocol
+              - MaxInstanceCount
+              - MinInstanceCount
+              - ProvisionDatabase
+              - SslCertificate
+              - SystemDiskCategory
+              - SystemDiskSize
   ServiceType: private
   ServiceInfo:
     Locale: zh-CN
@@ -50,6 +85,8 @@ Artifact:
     ArtifactType: EcsImage
     ArtifactName: aliyun_3.2104_docker_26
     Description: Aliyun 3.2104 Docker 26
+    # ArtifactName: alinux_3.2104_docker_26
+    # Description: Docker 26 on Alibaba cloud linux 3.2104
     ArtifactProperty:
       RegionId: ${ImageBuilder.EcsImage.RegionId}
       ImageId: ${ImageBuilder.EcsImage.SourceImageId}

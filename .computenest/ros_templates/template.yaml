@@ -682,6 +682,181 @@ Resources:
               - '${Port}/${Port}'
               - Port:
                   Ref: HostPort
+  InstanceRole:
+    Type: ALIYUN::RAM::Role
+    Properties:
+      RoleName:
+        Ref: ALIYUN::StackName
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - ecs.aliyuncs.com
+        Version: '1'
+      Policies:
+        - PolicyName:
+            Ref: ALIYUN::StackName
+          PolicyDocument:
+            Version: '1'
+            Statement:
+              - Action:
+                  - oss:GetObject
+                Resource:
+                  - Fn::Sub: 'acs:oss:${ALIYUN::Region}:${ALIYUN::AccountID}:applicationmanager-${ALIYUN::Region}-${ALIYUN::AccountID}/*'
+                Effect: Allow
+  EcsInstanceGroup:
+    Type: 'ALIYUN::ECS::InstanceGroup'
+    Properties:
+      UserData:
+        Fn::Sub:
+          - |-
+            #!/bin/bash
+            mkdir -p /opt/applicationmanager/bin /opt/applicationmanager/logs
+            LOG=/opt/applicationmanager/logs/install.log
+            echo "start deploying application" | tee $LOG
+            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
+            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DBUser}" "${DBPassword}" | tee $LOG
+          - DB_URL:
+              Fn::If:
+                - ProvisionDatabase
+                - Fn::GetAtt:
+                  - Database
+                  - InnerConnectionString
+                - ""
+      SystemDiskCategory:
+        Ref: SystemDiskCategory
+      VpcId:
+        Ref: VpcId
+      InstanceChargeType:
+        Ref: ChargeType
+      SecurityGroupId:
+        Ref: EcsSecurityGroup
+      SystemDiskSize:
+        Ref: SystemDiskSize
+      ImageId: aliyun_3_x64_20G_alibase_20240528.vhd
+      PeriodUnit:
+        Ref: PeriodUnit
+      VSwitchId:
+        Ref: VSwitchId
+      Period:
+        Ref: Period
+      InstanceType:
+        Ref: EcsInstanceType
+      ZoneId:
+        Ref: ZoneId
+      MaxAmount:
+        Ref: MinInstanceCount
+      InternetMaxBandwidthOut:
+        Ref: InternetMaxBandwidthOut
+      RamRoleName:
+        Fn::GetAtt:
+          - InstanceRole
+          - RoleName
+      SpotStrategy:
+        Fn::If:
+          - UseSpot
+          - SpotAsPriceGo
+          - NoSpot
+      KeyPairName:
+        Fn::If:
+          - NotUseKeyPair
+          - Ref: ALIYUN::NoValue
+          - Ref: KeyPairName
+  EssInstanceScalingGroup:
+    Type: 'ALIYUN::ESS::ScalingGroup'
+    Properties:
+      RemovalPolicys:
+        - NewestInstance
+      MinSize:
+        Ref: MinInstanceCount
+      MaxSize:
+        Ref: MaxInstanceCount
+      VSwitchIds:
+        Fn::If:
+          - HA
+          - - Ref: VSwitchId
+            - Ref: VSwitchId2
+          - - Ref: VSwitchId
+      ServerGroups:
+        Fn::If:
+          - HA
+          - - Type: ALB
+              Port: 
+                Ref: HostPort
+              ServerGroupId:
+                Ref: AlbServerGroup
+              Weight: 100
+          - Ref: ALIYUN::NoValue
+      DefaultCooldown: 300
+      MultiAZPolicy: BALANCE
+      DBInstanceIds:
+        Fn::If:
+          - ProvisionDatabase
+          - - Ref: Database
+          - Ref: ALIYUN::NoValue
+  EcsInstanceScalingConfiguration:
+    Type: 'ALIYUN::ESS::ScalingConfiguration'
+    Properties:
+      UserData:
+        Fn::Sub:
+          - |-
+            #!/bin/bash
+            mkdir -p /opt/applicationmanager/bin /opt/applicationmanager/logs
+            LOG=/opt/applicationmanager/logs/install.log
+            echo "start deploying application" | tee $LOG
+            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
+            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DBUser}" "${DBPassword}" | tee $LOG
+          - DB_URL:
+              Fn::If:
+                - ProvisionDatabase
+                - Fn::GetAtt:
+                  - Database
+                  - InnerConnectionString
+                - ""
+      SystemDiskCategory:
+        Ref: SystemDiskCategory
+      SecurityGroupId:
+        Ref: EcsSecurityGroup
+      SystemDiskSize:
+        Ref: SystemDiskSize
+      ImageId: aliyun_3_x64_20G_alibase_20240528.vhd
+      ScalingGroupId:
+        Ref: EssInstanceScalingGroup
+      InstanceType:
+        Ref: EcsInstanceType
+      InternetMaxBandwidthOut: 
+        Ref: InternetMaxBandwidthOut
+      RamRoleName:
+        Fn::GetAtt:
+          - InstanceRole
+          - RoleName
+      SpotStrategy:
+        Fn::If:
+          - UseSpot
+          - SpotAsPriceGo
+          - NoSpot
+      KeyPairName:
+        Fn::If:
+          - NotUseKeyPair
+          - Ref: ALIYUN::NoValue
+          - Ref: KeyPairName
+  EssInstanceScalingGroupEnable:
+    Type: 'ALIYUN::ESS::ScalingGroupEnable'
+    Properties:
+      ScalingRuleArisExecuteVersion: '1'
+      ScalingConfigurationId:
+        Ref: EcsInstanceScalingConfiguration
+      InstanceIds:
+        'Fn::GetAtt':
+          - EcsInstanceGroup
+          - InstanceIds
+      ScalingGroupId:
+        Ref: EssInstanceScalingGroup
+    DependsOn:
+      - EcsInstanceScalingConfiguration
+      - EssInstanceScalingGroup
   Alb:
     Type: 'ALIYUN::ALB::LoadBalancer'
     Condition: HA
@@ -785,181 +960,6 @@ Resources:
         Fn::If:
           - NeedSslCertificate
           - - Ref: SslCertificate
-          - Ref: ALIYUN::NoValue
-  InstanceRole:
-    Type: ALIYUN::RAM::Role
-    Properties:
-      RoleName:
-        Ref: ALIYUN::StackName
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service:
-                - ecs.aliyuncs.com
-        Version: '1'
-      Policies:
-        - PolicyName:
-            Ref: ALIYUN::StackName
-          PolicyDocument:
-            Version: '1'
-            Statement:
-              - Action:
-                  - oss:GetObject
-                Resource:
-                  - Fn::Sub: 'acs:oss:${ALIYUN::Region}:${ALIYUN::AccountID}:applicationmanager-${ALIYUN::Region}-${ALIYUN::AccountID}/*'
-                Effect: Allow
-  EcsInstanceGroup:
-    Type: 'ALIYUN::ECS::InstanceGroup'
-    Properties:
-      UserData:
-        Fn::Sub:
-          - |-
-            #!/bin/bash
-            mkdir -p /opt/applicationmanager/bin /opt/applicationmanager/logs
-            LOG=/opt/applicationmanager/logs/install.log
-            echo "start deploying application" | tee $LOG
-            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
-            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DBUser}" "${DBPassword}" | tee $LOG
-          - DB_URL:
-              Fn::If:
-                - ProvisionDatabase
-                - Fn::GetAtt:
-                  - Database
-                  - InnerConnectionString
-                - ""
-      SystemDiskCategory:
-        Ref: SystemDiskCategory
-      VpcId:
-        Ref: VpcId
-      InstanceChargeType:
-        Ref: ChargeType
-      SecurityGroupId:
-        Ref: EcsSecurityGroup
-      SystemDiskSize:
-        Ref: SystemDiskSize
-      ImageId: aliyun_3_9_x64_20G_alibase_20231219.vhd
-      PeriodUnit:
-        Ref: PeriodUnit
-      VSwitchId:
-        Ref: VSwitchId
-      Period:
-        Ref: Period
-      InstanceType:
-        Ref: EcsInstanceType
-      ZoneId:
-        Ref: ZoneId
-      MaxAmount:
-        Ref: MinInstanceCount
-      InternetMaxBandwidthOut:
-        Ref: InternetMaxBandwidthOut
-      RamRoleName:
-        Fn::GetAtt:
-          - InstanceRole
-          - RoleName
-      SpotStrategy:
-        Fn::If:
-          - UseSpot
-          - SpotAsPriceGo
-          - NoSpot
-      KeyPairName:
-        Fn::If:
-          - NotUseKeyPair
-          - Ref: ALIYUN::NoValue
-          - Ref: KeyPairName
-  EssInstanceScalingGroupEnable:
-    Type: 'ALIYUN::ESS::ScalingGroupEnable'
-    Properties:
-      ScalingRuleArisExecuteVersion: '1'
-      ScalingConfigurationId:
-        Ref: EcsInstanceScalingConfiguration
-      InstanceIds:
-        'Fn::GetAtt':
-          - EcsInstanceGroup
-          - InstanceIds
-      ScalingGroupId:
-        Ref: EssInstanceScalingGroup
-    DependsOn:
-      - EcsInstanceScalingConfiguration
-      - EssInstanceScalingGroup
-  EcsInstanceScalingConfiguration:
-    Type: 'ALIYUN::ESS::ScalingConfiguration'
-    Properties:
-      UserData:
-        Fn::Sub:
-          - |-
-            #!/bin/bash
-            mkdir -p /opt/applicationmanager/bin /opt/applicationmanager/logs
-            LOG=/opt/applicationmanager/logs/install.log
-            echo "start deploying application" | tee $LOG
-            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
-            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DBUser}" "${DBPassword}" | tee $LOG
-          - DB_URL:
-              Fn::If:
-                - ProvisionDatabase
-                - Fn::GetAtt:
-                  - Database
-                  - InnerConnectionString
-                - ""
-      SystemDiskCategory:
-        Ref: SystemDiskCategory
-      SecurityGroupId:
-        Ref: EcsSecurityGroup
-      SystemDiskSize:
-        Ref: SystemDiskSize
-      ImageId: aliyun_3_9_x64_20G_alibase_20231219.vhd
-      ScalingGroupId:
-        Ref: EssInstanceScalingGroup
-      InstanceType:
-        Ref: EcsInstanceType
-      InternetMaxBandwidthOut: 
-        Ref: InternetMaxBandwidthOut
-      RamRoleName:
-        Fn::GetAtt:
-          - InstanceRole
-          - RoleName
-      SpotStrategy:
-        Fn::If:
-          - UseSpot
-          - SpotAsPriceGo
-          - NoSpot
-      KeyPairName:
-        Fn::If:
-          - NotUseKeyPair
-          - Ref: ALIYUN::NoValue
-          - Ref: KeyPairName
-  EssInstanceScalingGroup:
-    Type: 'ALIYUN::ESS::ScalingGroup'
-    Properties:
-      RemovalPolicys:
-        - NewestInstance
-      MinSize:
-        Ref: MinInstanceCount
-      MaxSize:
-        Ref: MaxInstanceCount
-      VSwitchIds:
-        Fn::If:
-          - HA
-          - - Ref: VSwitchId
-            - Ref: VSwitchId2
-          - - Ref: VSwitchId
-      ServerGroups:
-        Fn::If:
-          - HA
-          - - Type: ALB
-              Port: 
-                Ref: HostPort
-              ServerGroupId:
-                Ref: AlbServerGroup
-              Weight: 100
-          - Ref: ALIYUN::NoValue
-      DefaultCooldown: 300
-      MultiAZPolicy: BALANCE
-      DBInstanceIds:
-        Fn::If:
-          - ProvisionDatabase
-          - - Ref: Database
           - Ref: ALIYUN::NoValue
   Database:
     Type: 'ALIYUN::RDS::DBInstance'
