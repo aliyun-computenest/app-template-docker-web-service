@@ -53,6 +53,7 @@ Parameters:
     AssociationPropertyMetadata:
       Mode: normal
       BucketName: applicationmanager-cn-hangzhou-1563457855438522
+      # UploadToApplicationManager: true
       Multiple: false
       Directory: false
       ValueType: OSSUrl
@@ -1041,13 +1042,20 @@ Resources:
             LOG=/opt/applicationmanager/logs/update.log
             echo "start updating application" | tee $LOG
             wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
-            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DBUser}" "${DBPassword}" | tee $LOG
+            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
           - DB_URL:
               Fn::If:
                 - ProvisionDatabase
                 - Fn::GetAtt:
                   - Database
                   - InnerConnectionString
+                - ""
+            DB_PORT:
+              Fn::If:
+                - ProvisionDatabase
+                - Fn::GetAtt:
+                  - Database
+                  - InnerPort
                 - ""
       Type: RunShellScript
       InstanceIds:
