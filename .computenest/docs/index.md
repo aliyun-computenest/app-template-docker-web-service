@@ -53,7 +53,18 @@ RDS数据库的信息（用户名、密码、数据库连接串）会保存到�
 
 ### 高可用模式的架构图
 
-## 更新应用和修改部署设置
+## 更新应用程序
+### 应用采用上传zip文件的形式
+通过重新上传源代码zip包来更新应用。
+### 应用采用Git仓库形式
+更换代码分支或者原分支有新的更新（最新commit必须变化）
+
+示例应用不支持更新。
+更新应用时支持指定每批
+
+2. 应用管理支持修改资源的配置，比如
+
+## 修改部署设置
 1. 应用管理支持通过重新上传源代码zip包或者指定Git代码仓库（如果分支没有变化，分支的最新commit必须已变化）来更新应用。
 2. 应用管理支持修改资源的配置，比如
 
@@ -105,7 +116,7 @@ RDS数据库的信息（用户名、密码、数据库连接串）会保存到�
 ```
 DATABASE_HOST=rm-xxxxxxx.mysql.rds.aliyuncs.com
 DATABASE_PORT=3306
-DATABASE_USERNAME=usernmae
+DATABASE_USERNAME=username
 DATABASE_PASSWORD=password
 ```
 在docker-compose.yaml中，可以通过env_file属性，设置容器的环境变量。

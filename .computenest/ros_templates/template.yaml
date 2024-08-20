@@ -19,6 +19,18 @@ Conditions:
     Fn::Equals:
       - ''
       - Ref: KeyPairName
+  NeedInstanceRole:
+    Fn::Equals:
+      - 'File'
+      - Ref: ApplicationSource
+  UsePrivateGitRepo:
+    Fn::And:
+      - Fn::Equals:
+        - 'GitRepo'
+        - Ref: ApplicationSource
+      - Fn::Equals:
+        - false
+        - Ref: IsPublicRepo
 Parameters:
   ApplicationSource:
     Type: String
@@ -49,11 +61,13 @@ Parameters:
     Description:
       en: Select zip file to upload to oss bucket, application manager uses oss file to deploy、update or rollback your application
       zh-cn: 选择zip文件上传到OSS bucket，应用管理使用OSS文件部署、更新或者回滚您的应用
+    Default: ''
     AssociationProperty: UploadFilesToUserBucket
     AssociationPropertyMetadata:
       Mode: normal
       UploadToApplicationManager: true
       Multiple: false
+      MaxCount: 1
       Directory: false
       ValueType: OSSUrl
       ObjectNamePrefix: "artifacts/"
@@ -79,10 +93,11 @@ Parameters:
   PublicGitRepoUrl:
     Type: String
     Label:
-      zh-cn: "公开Git仓库地址，格式参考https://github.com/owner/repo.git"
-      en: "Public git repository address, format likes: https://github.com/owner/repo.git"
+      zh-cn: 公开Git仓库
+      en: Public git repository
     Description:
-      zh-cn: 请注意在中国大陆地域从GitHub仓库部署可能存在网络问题
+      zh-cn: 地址格式为https://github.com/owner/repo.git，请注意在中国大陆地域从GitHub仓库部署可能存在网络问题
+      en: Address format refers to https://github.com/owner/repo.git
     AssociationPropertyMetadata:
       Visible:
         Condition:
@@ -650,20 +665,40 @@ Parameters:
   AppUpdateBatchSize:
     Type: Number
     Label:
-      zh-cn: 应用程序更新每批次ECS实例数
-      en: Batch size of ECS application update
+      zh-cn: 每批次更新ECS数
+      en: Batch of ECS updated
+    Description:
+      zh-cn: 应用程序滚动更新每批包含的最大ECS实例数
+      en: Maximum ECS instance count in application update batch
     MinValue: 1
     MaxValue: 1000
     Default: 1
   AppUpdatePauseTime:
     Type: Number
     Label:
-      zh-cn: 应用程序更新批次间的暂停时间，单位为秒
+      zh-cn: 批次间的暂停时间
+      en: Pause time between batches
+    Description:
+      zh-cn: 应用程序滚动更新批次间的暂停时间，单位为秒
       en: Pause time in seconds between application update batches
     MinValue: 0
     MaxValue: 3600
     Default: 0
 Resources:
+  GitCodeRepo:
+    Type: 'DATASOURCE::OOS::GitCodeRepo'
+    Condition: UsePrivateGitRepo
+    Properties:
+      Platform:
+        Ref: Platform
+      Owner:
+        Ref: Owner
+      Organization:
+        Ref: Organization
+      Repository:
+        Ref: Repository 
+      CommitId:
+        Ref: CommitHash
   EcsSecurityGroup:
     Type: 'ALIYUN::ECS::SecurityGroup'
     Properties:
@@ -684,6 +719,7 @@ Resources:
                   Ref: HostPort
   InstanceRole:
     Type: ALIYUN::RAM::Role
+    Condition: NeedInstanceRole
     Properties:
       RoleName:
         Ref: ALIYUN::StackName
@@ -717,7 +753,7 @@ Resources:
             LOG=/opt/applicationmanager/logs/install.log
             echo "start deploying application" | tee $LOG
             wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
-            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DBUser}" "${DBPassword}" | tee $LOG
+            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
           - DB_URL:
               Fn::If:
                 - ProvisionDatabase
@@ -725,6 +761,20 @@ Resources:
                   - Database
                   - InnerConnectionString
                 - ""
+            DB_PORT:
+              Fn::If:
+                - ProvisionDatabase
+                - Fn::GetAtt:
+                  - Database
+                  - InnerPort
+                - ""
+            GIT_URL:
+              Fn::If:
+                - UsePrivateGitRepo
+                - Fn::GetAtt:
+                  - GitCodeRepo
+                  - AuthorizedUrl
+                - Ref: PublicGitRepoUrl
       SystemDiskCategory:
         Ref: SystemDiskCategory
       VpcId:
@@ -751,9 +801,12 @@ Resources:
       InternetMaxBandwidthOut:
         Ref: InternetMaxBandwidthOut
       RamRoleName:
-        Fn::GetAtt:
-          - InstanceRole
-          - RoleName
+        Fn::If:
+          - NeedInstanceRole
+          - Fn::GetAtt:
+            - InstanceRole
+            - RoleName
+          - Ref: ALIYUN::NoValue
       SpotStrategy:
         Fn::If:
           - UseSpot
@@ -807,7 +860,7 @@ Resources:
             LOG=/opt/applicationmanager/logs/install.log
             echo "start deploying application" | tee $LOG
             wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
-            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DBUser}" "${DBPassword}" | tee $LOG
+            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
           - DB_URL:
               Fn::If:
                 - ProvisionDatabase
@@ -815,6 +868,20 @@ Resources:
                   - Database
                   - InnerConnectionString
                 - ""
+            DB_PORT:
+              Fn::If:
+                - ProvisionDatabase
+                - Fn::GetAtt:
+                  - Database
+                  - InnerPort
+                - ""
+            GIT_URL:
+              Fn::If:
+                - UsePrivateGitRepo
+                - Fn::GetAtt:
+                  - GitCodeRepo
+                  - AuthorizedUrl
+                - Ref: PublicGitRepoUrl
       SystemDiskCategory:
         Ref: SystemDiskCategory
       SecurityGroupId:
@@ -829,9 +896,12 @@ Resources:
       InternetMaxBandwidthOut: 
         Ref: InternetMaxBandwidthOut
       RamRoleName:
-        Fn::GetAtt:
-          - InstanceRole
-          - RoleName
+        Fn::If:
+          - NeedInstanceRole
+          - Fn::GetAtt:
+            - InstanceRole
+            - RoleName
+          - Ref: ALIYUN::NoValue
       SpotStrategy:
         Fn::If:
           - UseSpot
@@ -1022,6 +1092,10 @@ Resources:
           - |-
             #!/bin/bash
             function check_update() {
+              if [ ! -e /opt/applicationmanager/version ]; then
+                # cloud init is still running
+                exit 0
+              fi
               version=$(cat /opt/applicationmanager/version)
               if [ "${ApplicationSource}" == "File" ] && [ "${FileUrl}" == "$version" ]; then
                 echo "Found same oss file url, skip update" 
@@ -1042,7 +1116,7 @@ Resources:
             LOG=/opt/applicationmanager/logs/update.log
             echo "start updating application" | tee $LOG
             wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
-            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
+            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
           - DB_URL:
               Fn::If:
                 - ProvisionDatabase
@@ -1057,6 +1131,13 @@ Resources:
                   - Database
                   - InnerPort
                 - ""
+            GIT_URL:
+              Fn::If:
+                - UsePrivateGitRepo
+                - Fn::GetAtt:
+                  - GitCodeRepo
+                  - AuthorizedUrl
+                - Ref: PublicGitRepoUrl
       Type: RunShellScript
       InstanceIds:
         Fn::GetAtt:
@@ -1098,6 +1179,9 @@ Outputs:
     Label:
       en: Location of application installation
       zh-cn: 应用安装位置
+    Description:
+      en: Location of application installation
+      zh-cn: 应用安装位置
     Value: /opt/applicationmanager
   DatabaseEnvVar:
     Condition: ProvisionDatabase
@@ -1106,8 +1190,8 @@ Outputs:
       zh-cn: 数据库环境变量文件位置
     Description:
       en: The database username, password and connection string is saved in this file. docker-compose.yaml file can refer to this env file and read configuration from environment variables
-      zh-cn: 数据库账户名、密码和连接串保存在此文件中。docker-compose.yaml中可以引用此环境变量文件读取数据库配置
-    Value: /opt/applicationmanager/env/database_env
+      zh-cn: 数据库账户名、密码和连接信息保存在此文件中。docker-compose.yaml中可以引用此环境变量文件读取数据库配置
+    Value: "/opt/applicationmanager/env/database.env"
 Mappings: {}
 Metadata:
   'ALIYUN::ROS::Interface':
