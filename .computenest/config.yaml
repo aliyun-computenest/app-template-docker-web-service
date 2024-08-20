@@ -47,7 +47,7 @@ Service:
             Description: 上传zip源代码包或者从Git仓库拉取更新，滚动更新ECS实例上的应用程序
             Type: Custom
             Parameters:
-              - OssFileUrl
+              - FileUrl
               - Branch
               - CommitHash
               - AppUpdateBatchSize
@@ -83,10 +83,8 @@ Service:
 Artifact:
   EcsImage:
     ArtifactType: EcsImage
-    ArtifactName: aliyun_3.2104_docker_26
-    Description: Aliyun 3.2104 Docker 26
-    # ArtifactName: alinux_3.2104_docker_26
-    # Description: Docker 26 on Alibaba cloud linux 3.2104
+    ArtifactName: alinux_3.2104_docker_26
+    Description: Docker 26 on Alibaba cloud linux 3.2104
     ArtifactProperty:
       RegionId: ${ImageBuilder.EcsImage.RegionId}
       ImageId: ${ImageBuilder.EcsImage.SourceImageId}
@@ -127,7 +125,6 @@ ImageBuilder:
     InternetMaxBandwidthOut: 10
     CommandType: RunShellScript
     Timeout: 10800
-    Tags: [ ]
     CommandContent: |-
       #!/bin/bash
       yum -y update
@@ -144,14 +141,14 @@ ImageBuilder:
       {
           "registry-mirrors": [
               "https://0vmzj3q6.mirror.aliyuncs.com",
+              "https://vlgh0kqj.mirror.aliyuncs.com",
               "https://docker.m.daocloud.io",
               "https://mirror.baidubce.com",
               "https://dockerproxy.com",
               "https://mirror.iscas.ac.cn",
               "https://huecker.io",
               "https://dockerhub.timeweb.cloud",
-              "https://noohub.ru",
-              "https://vlgh0kqj.mirror.aliyuncs.com"
+              "https://noohub.ru"
           ]
       }
       EOF

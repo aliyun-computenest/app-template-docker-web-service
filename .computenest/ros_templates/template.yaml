@@ -41,7 +41,7 @@ Parameters:
         Demo:
           en: Demo Application
           zh-cn: 示例应用
-  OssFileUrl:
+  FileUrl:
     Type: String
     Label:
       en: File location
@@ -52,8 +52,7 @@ Parameters:
     AssociationProperty: UploadFilesToUserBucket
     AssociationPropertyMetadata:
       Mode: normal
-      BucketName: applicationmanager-cn-hangzhou-1563457855438522
-      # UploadToApplicationManager: true
+      UploadToApplicationManager: true
       Multiple: false
       Directory: false
       ValueType: OSSUrl
@@ -103,6 +102,7 @@ Parameters:
       zh-cn: Git平台
     Description:
       zh-cn: 请注意在中国大陆地域从GitHub仓库部署可能存在网络问题
+    Default: github
     AssociationProperty: ALIYUN::OOS::GitPlatform::Name
     AssociationPropertyMetadata:
       Visible:
@@ -704,7 +704,7 @@ Resources:
               - Action:
                   - oss:GetObject
                 Resource:
-                  - Fn::Sub: 'acs:oss:${ALIYUN::Region}:${ALIYUN::AccountID}:applicationmanager-${ALIYUN::Region}-${ALIYUN::AccountID}/*'
+                  - Fn::Sub: 'acs:oss:${ALIYUN::Region}:${ALIYUN::TenantId}:applicationmanager-${ALIYUN::Region}-${ALIYUN::TenantId}/*'
                 Effect: Allow
   EcsInstanceGroup:
     Type: 'ALIYUN::ECS::InstanceGroup'
@@ -1023,7 +1023,7 @@ Resources:
             #!/bin/bash
             function check_update() {
               version=$(cat /opt/applicationmanager/version)
-              if [ "${ApplicationSource}" == "File" ] && [ "${OssFileUrl}" == "$version" ]; then
+              if [ "${ApplicationSource}" == "File" ] && [ "${FileUrl}" == "$version" ]; then
                 echo "Found same oss file url, skip update" 
                 exit 0
               fi
@@ -1114,7 +1114,7 @@ Metadata:
     ParameterGroups:
       - Parameters:
           - ApplicationSource
-          - OssFileUrl
+          - FileUrl
           - IsPublicRepo
           - PublicGitRepoUrl
           - Platform

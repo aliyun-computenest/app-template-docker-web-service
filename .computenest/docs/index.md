@@ -108,7 +108,7 @@ DATABASE_PORT=3306
 DATABASE_USERNAME=usernmae
 DATABASE_PASSWORD=password
 ```
-在docker-compose.yaml中，可以通过env_file属性，设置容器的环境变量。然后您的应用代码就可以读取环境变量获取数据库的地址和账户、密码，进行访问。
+在docker-compose.yaml中，可以通过env_file属性，设置容器的环境变量。
 
 ```yaml
 services:
@@ -118,3 +118,4 @@ services:
     env_file:
       - ../env/database.env
 ```
+然后您的应用程序代码就可以读取环境变量获取数据库的地址和账户、密码，访问数据库。
