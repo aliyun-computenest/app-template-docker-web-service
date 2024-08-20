@@ -155,7 +155,6 @@ Parameters:
     AssociationProperty: ALIYUN::OOS::GitRepository::Name
     AssociationPropertyMetadata:
       Platform: '${Platform}'
-      Organization: '${Organization}'
       Owner: '${Owner}'
       Visible:
         Condition:
@@ -693,8 +692,6 @@ Resources:
         Ref: Platform
       Owner:
         Ref: Owner
-      Organization:
-        Ref: Organization
       Repository:
         Ref: Repository 
       CommitId:
@@ -749,11 +746,11 @@ Resources:
         Fn::Sub:
           - |-
             #!/bin/bash
-            mkdir -p /opt/applicationmanager/bin /opt/applicationmanager/logs
-            LOG=/opt/applicationmanager/logs/install.log
-            echo "start deploying application" | tee $LOG
-            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
-            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
+            export BASE_DIR=/opt/applicationmanager
+            mkdir -p $BASE_DIR/bin $BASE_DIR/logs
+            LOG=$BASE_DIR/logs/install.log
+            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O $BASE_DIR/bin/deploy_docker_web_app.sh | tee $LOG
+            bash $BASE_DIR/bin/deploy_docker_web_app.sh DEPLOY "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
           - DB_URL:
               Fn::If:
                 - ProvisionDatabase
@@ -856,11 +853,11 @@ Resources:
         Fn::Sub:
           - |-
             #!/bin/bash
-            mkdir -p /opt/applicationmanager/bin /opt/applicationmanager/logs
-            LOG=/opt/applicationmanager/logs/install.log
-            echo "start deploying application" | tee $LOG
-            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
-            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
+            export BASE_DIR=/opt/applicationmanager
+            mkdir -p $BASE_DIR/bin $BASE_DIR/logs
+            LOG=$BASE_DIR/logs/install.log
+            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O $BASE_DIR/bin/deploy_docker_web_app.sh | tee $LOG
+            bash $BASE_DIR/bin/deploy_docker_web_app.sh DEPLOY "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
           - DB_URL:
               Fn::If:
                 - ProvisionDatabase
@@ -1091,32 +1088,11 @@ Resources:
         Fn::Sub:
           - |-
             #!/bin/bash
-            function check_update() {
-              if [ ! -e /opt/applicationmanager/version ]; then
-                # cloud init is still running
-                exit 0
-              fi
-              version=$(cat /opt/applicationmanager/version)
-              if [ "${ApplicationSource}" == "File" ] && [ "${FileUrl}" == "$version" ]; then
-                echo "Found same oss file url, skip update" 
-                exit 0
-              fi
-              if [ "${ApplicationSource}" == "GitRepo" ] && [ "${CommitHash}" == "$version" ]; then
-                echo "Found same git commit hash, skip update" 
-                exit 0
-              fi
-              if [ "${ApplicationSource}" == "Demo" ] && [ "Demo" == "$version" ]; then
-                echo "Already deployed demo application, skip update" 
-                exit 0
-              fi
-            }
-            check_update
-
-            mkdir -p /opt/applicationmanager/bin /opt/applicationmanager/logs
-            LOG=/opt/applicationmanager/logs/update.log
-            echo "start updating application" | tee $LOG
-            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O /opt/applicationmanager/bin/deploy_docker_web_app.sh | tee $LOG
-            bash /opt/applicationmanager/bin/deploy_docker_web_app.sh "${ALIYUN::Region}" "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
+            export BASE_DIR=/opt/applicationmanager
+            mkdir -p $BASE_DIR/bin $BASE_DIR/logs
+            LOG=$BASE_DIR/logs/update.log
+            wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O $BASE_DIR/bin/deploy_docker_web_app.sh | tee $LOG
+            bash $BASE_DIR/bin/deploy_docker_web_app.sh UPDATE "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
           - DB_URL:
               Fn::If:
                 - ProvisionDatabase
