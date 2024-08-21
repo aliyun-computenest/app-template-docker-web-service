@@ -56,24 +56,28 @@ Service:
             Description: 修改部署设置
             Type: Custom
             Parameters:
-              - BackendProtocol
+              # 注释掉的：不支持更新、只对新增实例生效或者需要设置UpdatePolicy=ForAllInstances才能更新
               - DBCategory
               - DBInstanceClass
               - DBInstanceStorage
               - DBInstanceStorageType
-              - EcsInstanceType
-              - Engine
-              - EngineVersion
+              # does not support update
+              # - Engine
+              # - EngineVersion
+              - DBUser
+              - DBPassword
               - HostPort
+              # - EcsInstanceType
               - InternetMaxBandwidthOut
-              - KeyPairName
-              - ListenerProtocol
+              # - SystemDiskCategory
+              # - SystemDiskSize
+              # - KeyPairName
+              # - BackendProtocol
+              # - ListenerProtocol
               - MaxInstanceCount
               - MinInstanceCount
               - ProvisionDatabase
               - SslCertificate
-              - SystemDiskCategory
-              - SystemDiskSize
   ServiceType: private
   ServiceInfo:
     Locale: zh-CN

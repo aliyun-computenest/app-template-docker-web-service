@@ -20,23 +20,27 @@ DB_PASSWORD=$9
 function check_update() {
   if [ "$ACTION" == "UPDATE" ]; then
     if [ ! -e $BASE_DIR/version ]; then
-      echo "first time installation is still running, skip update"
+      echo "first time installation is running, quit update"
       exit 0
     fi
     version=$(cat $BASE_DIR/version)
     echo "version: $version"
     if [ "${APP_SOURCE}" == "File" ] && [ "${FILE_URL}" == "$version" ]; then
-      echo "Found same oss file url, skip update" 
-      exit 0
+      echo "Found same oss file url, skip update application" 
+      NEED_UPDATE_APP=false
+      return
     fi
     if [ "${APP_SOURCE}" == "GitRepo" ] && [ "${COMMIT_HASH}" == "$version" ]; then
-      echo "Found same git commit hash, skip update" 
-      exit 0
+      echo "Found same git commit hash, skip update application" 
+      NEED_UPDATE_APP=false
+      return
     fi
     if [ "${APP_SOURCE}" == "Demo" ] && [ "Demo" == "$version" ]; then
-      echo "Already deployed demo application, skip update" 
-      exit 0
+      echo "Already deployed demo application, skip update application" 
+      NEED_UPDATE_APP=false
+      return
     fi
+    NEED_UPDATE_APP=true
     echo "start updating application"
   fi
 }
@@ -129,10 +133,13 @@ EOF
 function main() {
   check_update
   prepare_directory
-  set_version
+  # database properties may change while the application is not changed
   save_database_config
-  download_source_bundle
-  setup_system_service
+  if [ "$ACTION" == "DEPLOY" ] || [ "$NEED_UPDATE_APP" == "true" ]; then
+    set_version
+    download_source_bundle
+    setup_system_service
+  fi
 }
 
 main

@@ -109,8 +109,9 @@ Parameters:
             - 'Fn::Equals':
               - '${IsPublicRepo}'
               - true
-    AllowedPattern: '^(https:\/\/[^\s]+\.git)$'
-    Default: "https://github.com/owner/repo.git"
+    # 需要允许默认空值，这样CommitHash的AssociationProperty可以识别出用RepoUrl还是其他参数
+    AllowedPattern: '^(https:\/\/[^\s]+\.git)?$'
+    Default: ""
   Platform:
     Type: String
     Label:
@@ -148,6 +149,28 @@ Parameters:
               - '${IsPublicRepo}'
               - false
     Default: ''
+  Organization:
+    Type: String
+    Label:
+      en: Organization (optional)
+      zh-cn: 组织（可选）
+    Description:
+      en: No need for user own repository
+      zh-cn: 个人仓库无需选择
+    Default: ''
+    AssociationProperty: ALIYUN::OOS::GitOrganization::Name
+    AssociationPropertyMetadata:
+      Platform: ${Platform}
+      Owner: ${Owner}
+      Visible:
+        Condition:
+          'Fn::And':
+            - 'Fn::Equals':
+              - '${ApplicationSource}'
+              - GitRepo
+            - 'Fn::Equals':
+              - '${IsPublicRepo}'
+              - false
   Repository:
     Type: String
     Label:
@@ -157,6 +180,7 @@ Parameters:
     AssociationPropertyMetadata:
       Platform: '${Platform}'
       Owner: '${Owner}'
+      Organization: ${Organization}
       Visible:
         Condition:
           'Fn::And':
@@ -185,8 +209,8 @@ Parameters:
       en: Git Commit
       zh-cn: Git Commit
     Description:
-      en: Input branch to get latest commit hash automatically, commit should be different when update application
-      zh-cn: 输入分支后自动获取分支最新的Commit Hash，更新应用时Commit必须不同
+      en: Input branch to get latest commit hash automatically, commit should be different when update application;If commit is not set, check git repository and branch name
+      zh-cn: 输入分支后自动获取分支最新的Commit Hash，更新应用时Commit必须不同；如果无法获取Commit请检查仓库地址和分支名称是否正确
     Default: ''
     AssociationProperty: ALIYUN::OOS::GitBranch::CommitHash
     AssociationPropertyMetadata:
@@ -1191,6 +1215,7 @@ Metadata:
           - PublicGitRepoUrl
           - Platform
           - Owner
+          - Organization
           - Repository
           - Branch
           - CommitHash
