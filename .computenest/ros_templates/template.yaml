@@ -15,10 +15,11 @@ Conditions:
       - HTTPS
   UseSpot:
     Ref: UseSpot
-  NotUseKeyPair:
-    Fn::Equals:
-      - ''
-      - Ref: KeyPairName
+  UseKeyPair:
+    Fn::Not:
+      Fn::Equals:
+        - ''
+        - Ref: KeyPairName
   NeedInstanceRole:
     Fn::Equals:
       - 'File'
@@ -44,12 +45,12 @@ Parameters:
     Default: File
     AssociationPropertyMetadata:
       ValueLabelMapping:
-        GitRepo:
-          en: Git Repository
-          zh-cn: Git仓库
         File:
           en: Zip File
           zh-cn: 本地zip文件
+        GitRepo:
+          en: Git Repository
+          zh-cn: Git仓库
         Demo:
           en: Demo Application
           zh-cn: 示例应用
@@ -96,8 +97,8 @@ Parameters:
       zh-cn: 公开Git仓库
       en: Public git repository
     Description:
-      zh-cn: 地址格式为https://github.com/owner/repo.git，请注意在中国大陆地域从GitHub仓库部署可能存在网络问题
-      en: Address format refers to https://github.com/owner/repo.git
+      zh-cn: Git clone地址，https格式（https://github.com/owner/repo.git），请注意在中国大陆地域从GitHub仓库部署可能存在网络问题
+      en: Git clone address in https format (https://github.com/owner/repo.git)
     AssociationPropertyMetadata:
       Visible:
         Condition:
@@ -184,8 +185,8 @@ Parameters:
       en: Git Commit
       zh-cn: Git Commit
     Description:
-      en: Input branch to get latest commit hash automatically
-      zh-cn: 输入分支后自动获取分支最新的Commit Hash
+      en: Input branch to get latest commit hash automatically, commit should be different when update application
+      zh-cn: 输入分支后自动获取分支最新的Commit Hash，更新应用时Commit必须不同
     Default: ''
     AssociationProperty: ALIYUN::OOS::GitBranch::CommitHash
     AssociationPropertyMetadata:
@@ -219,8 +220,10 @@ Parameters:
           zh-cn: 高可用
       DescriptionMapping:
         SingleInstance:
+          en: Deploy single ECS instance, RDS database is optional. Recommend to use in development and testing environment
           zh-cn: 部署单台ECS，可选部署数据库。建议在开发测试环境使用单实例模式
         HighAvailability:
+          en: Deploy several ECS instances to create scaling group as application load balancer's backend server group. RDS database is optional. Recommend to use in production environment
           zh-cn: 部署指定数量ECS，并加入伸缩组和应用负载均衡器，可选部署数据库。建议在生产环境使用高可用模式
   VpcId:
     Type: String
@@ -239,14 +242,14 @@ Parameters:
     Type: String
     Label:
       zh-cn: 可用区1
-      en: Zone ID 1
+      en: Zone 1
   ZoneId2:
     AssociationProperty: 'ALIYUN::ECS::Instance::ZoneId'
     Type: String
     Default: ''
     Label:
       zh-cn: 可用区2
-      en: Zone ID2
+      en: Zone 2
     AssociationPropertyMetadata:
       ExclusiveTo:
         - ZoneId
@@ -289,9 +292,10 @@ Parameters:
     Default: PostPaid
     Label:
       zh-cn: 付费模式
-      en: pay type
+      en: Pay type
     Description:
       zh-cn: 按量付费建议搭配<a href='https://help.aliyun.com/zh/ecs/product-overview/savings-plans' target='_blank'>节省计划</a>或<a href='https://help.aliyun.com/zh/ecs/product-overview/reserved-instances' target='_blank'>预留实例券</a>来优化成本
+      en: Recommend to use <a href='https://www.alibabacloud.com/en/product/ecs-savings-plans' target='_blank'>Savings Plans</a> or <a href='https://www.alibabacloud.com/help/en/ecs/product-overview/reserved-instances' target='_blank'>Reserved Instances</a> to optimize costs
     Type: String
     AllowedValues:
       - PostPaid
@@ -326,8 +330,8 @@ Parameters:
               - PostPaid
     Default: 1
     Label:
-      zh-cn: 云服务器预付费资源的购买时长
-      en: ECS instance pay period
+      zh-cn: 预付费资源的购买时长
+      en: Prepaid resource pay period
     AllowedValues:
       - 1
       - 2
@@ -347,8 +351,10 @@ Parameters:
   UseSpot:
     Type: Boolean
     Label:
+      en: Create preemptible instance
       zh-cn: 创建抢占式实例
     Description:
+      en: Preemptible instance's variable price can go as low as 10% the price of a pay-as-you-go instance with the same configurations, please note <font color='blue'>Preemptible instance may be interrupted automatically</font>, please refer to <a href='https://www.alibabacloud.com/help/en/ecs/user-guide/overview-4' target='_blank'>What are preemptible instances</a>
       zh-cn: 抢占式实例相对于按量付费实例最高能节约90%的实例成本，请注意<font color='blue'>抢占式实例有可能被回收</font>，请参考<a href='https://help.aliyun.com/zh/ecs/user-guide/overview-4' target='_blank'>什么是抢占式实例</a>
     Default: false
     AssociationPropertyMetadata:
@@ -408,9 +414,10 @@ Parameters:
   KeyPairName:
     Label:
       zh-cn: 密钥对（可选）
-      en: SSH key pair
+      en: SSH key pair (optional)
     Description:
-      zh-cn: 建议使用密钥对实现无密码登录，提高实例安全性
+      en: Recommend to use key pair instead of password to improve security
+      zh-cn: 建议使用密钥对实现无密码登录，提高安全性
     Type: String
     AssociationProperty: 'ALIYUN::ECS::KeyPair::KeyPairName'
     Default: ''
@@ -420,6 +427,7 @@ Parameters:
       en: ECS instance count to create 
       zh-cn: 创建ECS实例数量
     Description:
+      en: Use as the minimum number of ECS instances in scaling group, will be created according to pay type specified and join to scaling group
       zh-cn: 作为伸缩组的最小实例数，在部署时按指定的付费类型创建并加入伸缩组
     Default: 1
     MinValue: 1
@@ -435,8 +443,8 @@ Parameters:
       en: Maximum ECS instance count in scaling group
       zh-cn: 伸缩组最大ECS实例数量
     Description:
-      en: User needs to scale manually or set up automatic scaling rule
-      zh-cn: 部署完成后，用户可以手工扩缩容或配置自动伸缩规则。仅支持扩容按量付费实例
+      en: User needs to scale manually or set up automatic scaling rule. ESS only supports scale out postpaid ECS instances
+      zh-cn: 部署完成后，用户可以手工扩缩容或配置自动伸缩规则。ESS仅支持扩容按量付费实例
     Default: 10
     MinValue: 1
     AssociationPropertyMetadata:
@@ -448,8 +456,8 @@ Parameters:
   HostPort:
     Type: Number
     Label:
-      en: The port web service listens on host
-      zh-cn: Web服务在主机上监听的端口
+      en: The port web service listens on ECS instance
+      zh-cn: Web服务在ECS实例上监听的端口
     MaxValue: 65535
     MinValue: 0
     Default: 80
@@ -459,6 +467,7 @@ Parameters:
       en: Backend service protocol
       zh-cn: 后端服务协议
     Description:
+      en: Recommend to use HTTP as backend service protocol and HTTPS as ALB listener protocol
       zh-cn: 建议在后端服务采用HTTP协议，在应用负载均衡配置HTTPS协议
     Default: HTTP
     AllowedValues:
@@ -473,10 +482,11 @@ Parameters:
   ListenerProtocol:
     Type: String
     Label:
-      en: ALB listen protocl
+      en: ALB listener protocl
       zh-cn: 应用负载均衡监听的协议
     Description:
-      zh-cn: 即最终用户访问Web服务时使用的协议；HTTP协议采用80端口，HTTPS协议采用443端口
+      en: The protocol end user used to accesses the web service
+      zh-cn: 最终用户访问Web服务时使用的协议
     AllowedValues:
       - HTTP
       - HTTPS
@@ -630,12 +640,12 @@ Parameters:
             - true
   DBUser:
     Type: String
-    Description:
-      en: Consist of 2 to 16 characters of lowercase letters, underline. Must begin with a letter and be end with an alphanumeric character
-      zh-cn: 由 2 到 16 个小写字母组成，下划线。必须以字母开头，以字母数字字符结尾
     Label:
       zh-cn: 数据库账号
       en: Database Username
+    Description:
+      en: Consist of 2 to 16 characters of lowercase letters, underline. Must begin with a letter and be end with an alphanumeric character
+      zh-cn: 由 2 到 16 个小写字母组成，下划线。必须以字母开头，以字母数字字符结尾
     AssociationPropertyMetadata:
       Visible:
         Condition:
@@ -647,6 +657,9 @@ Parameters:
     Default: 'application'
   DBPassword:
     Type: String
+    Label:
+      zh-cn: 数据库密码
+      en: Database Password
     AssociationProperty: 'ALIYUN::RDS::Instance::AccountPassword'
     AssociationPropertyMetadata:
       Visible:
@@ -654,9 +667,6 @@ Parameters:
           'Fn::Equals':
             - '${ProvisionDatabase}'
             - true
-    Label:
-      zh-cn: 数据库密码
-      en: Database Password
     MaxLength: 32
     MinLength: 8
     NoEcho: true
@@ -737,7 +747,8 @@ Resources:
               - Action:
                   - oss:GetObject
                 Resource:
-                  - Fn::Sub: 'acs:oss:${ALIYUN::Region}:${ALIYUN::TenantId}:applicationmanager-${ALIYUN::Region}-${ALIYUN::TenantId}/*'
+                  # arn里不能指定地域
+                  - Fn::Sub: 'acs:oss:*:${ALIYUN::TenantId}:applicationmanager-${ALIYUN::Region}-${ALIYUN::TenantId}/*'
                 Effect: Allow
   EcsInstanceGroup:
     Type: 'ALIYUN::ECS::InstanceGroup'
@@ -811,9 +822,9 @@ Resources:
           - NoSpot
       KeyPairName:
         Fn::If:
-          - NotUseKeyPair
-          - Ref: ALIYUN::NoValue
+          - UseKeyPair
           - Ref: KeyPairName
+          - Ref: ALIYUN::NoValue
   EssInstanceScalingGroup:
     Type: 'ALIYUN::ESS::ScalingGroup'
     Properties:
@@ -906,9 +917,9 @@ Resources:
           - NoSpot
       KeyPairName:
         Fn::If:
-          - NotUseKeyPair
-          - Ref: ALIYUN::NoValue
+          - UseKeyPair
           - Ref: KeyPairName
+          - Ref: ALIYUN::NoValue
   EssInstanceScalingGroupEnable:
     Type: 'ALIYUN::ESS::ScalingGroupEnable'
     Properties:
@@ -962,7 +973,8 @@ Resources:
         UnhealthyThreshold: 3
         HealthCheckMethod: HEAD
         HealthCheckTimeout: 5
-        HealthCheckProtocol: HTTP
+        HealthCheckProtocol:
+          Ref: BackendProtocol
         HealthCheckHttpVersion: HTTP1.1
         HealthyThreshold: 3
         HealthCheckConnectPort:

@@ -53,7 +53,7 @@ Service:
               - AppUpdateBatchSize
               - AppUpdatePauseTime
           - Name: 修改部署设置
-            Description: 修改资源部署设置
+            Description: 修改部署设置
             Type: Custom
             Parameters:
               - BackendProtocol

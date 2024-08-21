@@ -70,6 +70,7 @@ DATABASE_USERNAME=${DB_USER}
 DATABASE_PASSWORD=${DB_PASSWORD}
 EOF
   fi
+  chmod 600 $BASE_DIR/env/database.env
 }
 
 function download_source_bundle() {
@@ -85,7 +86,8 @@ function download_source_bundle() {
     echo "download zip file from oss and extract it"
     TOKEN=$(curl -X PUT "http://100.100.100.200/latest/api/token" -H "X-aliyun-ecs-metadata-token-ttl-seconds:600")
     ROLE_NAME=$(curl -H "X-aliyun-ecs-metadata-token: $TOKEN" http://100.100.100.200/latest/meta-data/ram/security-credentials/)
-    ossutil -e oss-cn-hangzhou.aliyuncs.com --mode EcsRamRole --ecs-role-name $ROLE_NAME cp $FILE_URL $BASE_DIR/download/
+    REGION_ID=$(curl -H "X-aliyun-ecs-metadata-token: $TOKEN" http://100.100.100.200/latest/meta-data/region-id)
+    ossutil -e oss-${REGION_ID}.aliyuncs.com --mode EcsRamRole --ecs-role-name $ROLE_NAME cp $FILE_URL $BASE_DIR/download/
     FILE_NAME=$(basename $FILE_URL)
     unzip $BASE_DIR/download/$FILE_NAME -d $BASE_DIR/application
   elif [ "${APP_SOURCE}" == "GitRepo" ]; then
@@ -99,10 +101,10 @@ function download_source_bundle() {
   fi
 }
 
-function setup_docker_app() {
-  systemctl stop docker-web-service-app
+function setup_system_service() {
+  systemctl stop docker-web-service
   echo "setup system service and enable auto startup"
-  cat >/etc/systemd/system/docker-web-service-app.service <<EOF
+  cat >/etc/systemd/system/docker-web-service.service <<EOF
     [Unit]
     Description=docker web service deployed by application manager
     Requires=docker.service
@@ -119,9 +121,9 @@ function setup_docker_app() {
     [Install]
     WantedBy=multi-user.target
 EOF
-  systemctl enable docker-web-service-app
-  echo "start application service"
-  systemctl start docker-web-service-app
+  systemctl enable docker-web-service
+  echo "start docker web service"
+  systemctl start docker-web-service
 }
 
 function main() {
@@ -130,7 +132,7 @@ function main() {
   set_version
   save_database_config
   download_source_bundle
-  setup_docker_app
+  setup_system_service
 }
 
 main
