@@ -52,8 +52,8 @@ Service:
               - CommitHash
               - AppUpdateBatchSize
               - AppUpdatePauseTime
-          - Name: 修改部署设置
-            Description: 修改部署设置
+          - Name: 修改部署配置
+            Description: 修改部署配置
             Type: Custom
             Parameters:
               # 注释掉的：不支持更新、只对新增实例生效或者需要设置UpdatePolicy=ForAllInstances才能更新
