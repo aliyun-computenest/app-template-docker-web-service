@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>Docker Web Service应用模板 - Aliyun 计算巢 Docker Web Service应用模板</title>
+
+  <link rel="shortcut icon" href="img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="search/main.js"></script>
+  
+
+  
+
+  <script src="js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#docker-web-service">Docker Web Service应用模板</a></li>
+              
+                  <li><a href="#_1">部署入口</a></li>
+                  
+                      <li class="li-h3"><a href="#_2">部署步骤和输出</a></li>
+                  
+              
+                  <li><a href="#docker-web-service_1">提供您的Docker Web Service应用程序</a></li>
+                  
+                      <li class="li-h3"><a href="#docker-compose">Docker compose介绍</a></li>
+                  
+              
+                  <li><a href="#docker">如何在Docker应用中访问数据库</a></li>
+                  
+              
+                  <li><a href="#_3">部署架构</a></li>
+                  
+                      <li class="li-h3"><a href="#_4">单实例模式的架构图</a></li>
+                  
+                      <li class="li-h3"><a href="#_5">高可用模式的架构图</a></li>
+                  
+              
+                  <li><a href="#_6">滚动更新应用程序</a></li>
+                  
+              
+                  <li><a href="#_7">修改部署配置</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="docker-web-service">Docker Web Service应用模板</h1>
+<p>此应用模板帮助您在阿里云上快捷部署符合最佳实践的Docker Web Service应用。支持部署高可用的生产应用和单实例的日常测试应用。</p>
+<h2 id="_1">部署入口</h2>
+<ol>
+<li>从应用管理首页-&gt;创建应用-&gt;快捷创建-&gt;通过应用模板创建，选择Docker Web Service应用模板，点击正式创建。将会创建一个新应用和一个应用分组。</li>
+<li>在已有应用里，点击右上角“创建应用分组”-&gt;快捷创建-&gt;通过应用模板创建,选择Docker Web Service应用模板。将会创建一个新应用分组。</li>
+</ol>
+<h3 id="_2">部署步骤和输出</h3>
+<p>请参照页面提示填入参数，点击创建后，应用分组进入部署中状态。在部署成功后，可以查看应用分组的输出信息，包括：
+1. 应用域名：点击从浏览器访问您的web服务
+2. 应用安装位置：如果您想查看您的源代码，可以登录ECS实例，找到应用安装目录查看
+3. 数据库环境变量文件位置：此文件中保存了数据库账号的用户名、密码以及数据库的地址。</p>
+<h2 id="docker-web-service_1">提供您的Docker Web Service应用程序</h2>
+<p>此应用模板支持两种方式来上传您的应用源代码：
+1. 上传本地的zip文件到应用管理OSS bucket。
+上传的zip源代码包，会存储在应用管理专用的OSS bucket中（bucket名称：applicationmanager-地域-账户id）
+2. 指定一个Git仓库的分支。如果是私有仓库需要先授权应用管理访问您的Git仓库。
+应用管理将在您的ECS实例中克隆Git仓库后启动docker应用。支持Github、Gitee等平台，注意在国内地域部署，从GitHub克隆代码有可能失败。
+<img src="app-source.png"></p>
+<p>您的Docker Web Service应用的源代码项目需要满足以下条件：
+1. 在根目录包含docker compose配置文件（compose.yaml或compose.yml、docker-compose.yaml、docker-compose.yml）。
+2. 如果compose.yaml中依赖本地build的docker镜像，需要将build相关的文件一并包含在项目中，比如DockerFile</p>
+<p>应用将使用<code>docker compose up -d</code>命令在ECS实例上启动您的Docker应用。由于docker应用是异步启动的，在部署完成后可能需要等待一段时间才能够访问Web服务。</p>
+<h3 id="docker-compose">Docker compose介绍</h3>
+<p>Docker compose是一种容器编排工具，可以支持启动多个容器。如果您的应用原先是使用单容器运行的，改成使用Docker compose运行也非常简单。您可以参考以下文档了解docker compose：
+- <a href="https://docs.docker.com/compose/">Docker compose官方指南(英文)</a>
+- <a href="https://docs.docker.com/compose/compose-file/">Compose file reference(英文)</a></p>
+<h4 id="composeyaml">一个单容器的compose.yaml示例</h4>
+<pre><code class="language-yaml">services:
+  # 服务名，可以有多个服务
+  webapp:
+    # docker镜像
+    image: &quot;aliyun-computenest-opensource-registry.cn-hangzhou.cr.aliyuncs.com/default/nginx:20240625&quot;
+    # 端口映射，容器内80端口映射到主机的5000端口
+    ports:
+      - &quot;5000:80&quot;
+    # 存储卷挂载，将主机的./static目录挂载到容器/usr/share/nginx/html
+    volumes:
+      - ./static:/usr/share/nginx/html
+</code></pre>
+<p>将此文件保存为/root/compose.yaml; 执行echo "Hello World" &gt; /root/static/index.html，然后在/root目录执行<code>docker compose up -d</code>启动应用。(/root可以换成您的工作目录)
+打开http://localhost:5000访问应用服务。</p>
+<h4 id="composeyaml_1">多容器的compose.yaml示例</h4>
+<p>您可以参考此示例应用：https://gitee.com/betabao/docker-web-app
+此应用中包含一个本地Dockerfile构建出的Python flask web容器和一个redis容器。启动后，每次访问网页会将redis中存储的访问计数加一，并打印次数到网页。</p>
+<h2 id="docker">如何在Docker应用中访问数据库</h2>
+<p>如果您选择部署了数据库，数据库的访问信息会存储到环境变量文件中：/opt/applicationmanager/env/database.env</p>
+<p>此环境变量文件的格式入下：</p>
+<pre><code>DATABASE_HOST=rm-xxxxxxx.mysql.rds.aliyuncs.com
+DATABASE_PORT=3306
+DATABASE_USERNAME=username
+DATABASE_PASSWORD=password
+</code></pre>
+<p>在compose.yaml中，可以通过env_file属性，设置容器的环境变量。</p>
+<pre><code class="language-yaml">services:
+  webapp:
+    image: &quot;you-web-app-image&quot;
+    # 将数据库环境变量文件导入到容器，代码中可以读取环境变量获取数据库的地址和账户、密码
+    env_file:
+      - ../env/database.env
+</code></pre>
+<p>然后您的应用程序代码就可以读取环境变量获取数据库的地址和账户、密码，访问数据库。</p>
+<h2 id="_3">部署架构</h2>
+<p>此应用模板支持两种部署架构，单实例模式和高可用模式。
+1. 单实例模式会创建一台带公网IP的ECS，在此ECS实例上部署docker web service应用。可选部署一个RDS数据库。用户通过公网IP访问web服务。单实例模式适合作为开发测试环境。
+2. 高可用模式会创建一台或多台ECS实例并加入到弹性伸缩组，并关联弹性伸缩组和应用负载均衡器ALB实例。可选部署一个RDS数据库。用户通过ALB实例的域名访问web服务。高可用模式适合作为生产环境。</p>
+<p>RDS数据库的连接信息（数据库地址、用户名、密码）会保存到一个环境变量文件中，您可以在compose.yaml中引入环境变量文件，就可以在应用代码中读取环境变量的值、访问数据库。</p>
+<h4 id="_4">单实例模式的架构图</h4>
+<p><img src="architecture_ecs_single.png"></p>
+<h4 id="_5">高可用模式的架构图</h4>
+<p><img src="architecture_HA.png"></p>
+<h2 id="_6">滚动更新应用程序</h2>
+<p>在应用分组部署完成后，支持更新应用程序。更新程序的入口，在应用分组概览页-&gt;修改配置-&gt;更新应用程序。</p>
+<p>和部署应用类似，支持重新上传源代码zip包或指定Git仓库分支来更新应用程序。对于Git仓库，更新时最新的Commit必须发生变化，即更换了代码分支或者原分支有新的Commit。示例应用不支持更新。</p>
+<p>用户可以指定滚动更新的设置，包括每个更新批次包含的ECS实例个数和更新批次的间隔时间。
+<img src="update-setting.png"></p>
+<p><strong>注意</strong>：更新应用期间请勿对应用或资源进行任何操作。由于docker应用是异步启动的，在部署完成后可能需要等待一段时间才能够访问Web服务。</p>
+<h2 id="_7">修改部署配置</h2>
+<ol>
+<li>Docker Web Service应用模板支持修改资源的部分配置。更新程序的入口，在应用分组概览页-&gt;修改配置-&gt;修改部署配置。</li>
+<li>应用模板的参数中包含核心的资源配置，其他资源配置采用默认值。如果您需要修改资源配置，比如配置弹性伸缩的自动伸缩规则或者修改ALB的配置，您可以从资源管理页找到云资源后跳转到云服务控制台手动修改。</li>
+</ol>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2024-09-04 12:02:10.707045+00:00
+  -->
+</body>
+</html>
