@@ -88,6 +88,7 @@ RDS数据库的连接信息（数据库地址、用户名、密码）会保存�
 <img src="architecture_ecs_single.png">
 
 #### 高可用模式的架构图
+<img src="architecture_HA.png">
 
 ## 滚动更新应用程序
 在应用分组部署完成后，支持更新应用程序。更新程序的入口，在应用分组概览页->修改配置->更新应用程序。
