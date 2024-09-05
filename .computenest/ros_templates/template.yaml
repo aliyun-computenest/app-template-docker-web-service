@@ -38,6 +38,9 @@ Parameters:
     Label:
       en: Source of application
       zh-cn: 应用来源
+    Description:
+      en: Read service deployment and usage instructions, learn about the requirements of application source code zip package and Git repository
+      zh-cn: 查看服务部署和使用说明，了解应用源代码zip包和Git仓库需满足的要求
     AllowedValues:
       - File 
       - GitRepo
@@ -120,6 +123,11 @@ Parameters:
     Description:
       zh-cn: 请注意在中国大陆地域从GitHub仓库部署可能存在网络问题
     Default: github
+    AllowedValues:
+      - github
+      - gitee
+      - gitlab
+      - codeup
     AssociationProperty: ALIYUN::OOS::GitPlatform::Name
     AssociationPropertyMetadata:
       Visible:
