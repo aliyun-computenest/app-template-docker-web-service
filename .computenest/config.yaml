@@ -87,7 +87,7 @@ Service:
 Artifact:
   EcsImage:
     ArtifactType: EcsImage
-    ArtifactName: alinux.2104_docker_26
+    ArtifactName: aliyun_3_2104_docker_26
     Description: Docker 26 on Alibaba cloud linux 3.2104
     ArtifactProperty:
       RegionId: ${ImageBuilder.EcsImage.RegionId}
