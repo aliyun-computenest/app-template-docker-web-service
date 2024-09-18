@@ -39,9 +39,8 @@ Parameters:
       en: Source of application
       zh-cn: 应用来源
     Description:
-      en: Read service deployment and usage instructions, learn about the requirements of application source code zip package and Git repository
-      zh-cn: 查看服务部署和使用说明，了解应用源代码zip包和Git仓库需满足的要求
-    AllowedValues:
+      en: Read <a href='https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-87c464025ef14b3b8468?isInstance=true' target='_blank'>deployment and usage instructions</a>, learn about the requirements of application source code zip package and Git repository. The demo application uses <a href='' target='_blank'>example from Docker compose official quickstart</a>
+      zh-cn: 查看<a href='https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-87c464025ef14b3b8468?isInstance=true' target='_blank'>部署和使用说明</a>，了解应用源代码zip包和Git仓库需满足的要求。示例应用采用了<a href='' target='_blank'>Docker compose官方quickstart中的示例</a>
       - File 
       - GitRepo
       - Demo
@@ -488,8 +487,11 @@ Parameters:
   HostPort:
     Type: Number
     Label:
-      en: The port web service listens on ECS instance
-      zh-cn: Web服务在ECS实例上监听的端口
+      en: Server port
+      zh-cn: 服务器端口
+    Description:
+      en: The port web service listens on ECS instance, docker compose file should map to this host port
+      zh-cn: Web服务在ECS实例上监听的端口, docker compose文件中需要映射到该主机端口
     MaxValue: 65535
     MinValue: 0
     Default: 80
@@ -619,8 +621,8 @@ Parameters:
       en: Database Storage
     Type: Number
     Description:
-      zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB
-      en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB
+      zh-cn: RDS实例大小范围为20-2000，每5个增量，单位为GB。变更存储空间时需满足数据库规格的限制条件（一般不允许缩容或者缩容需满足一定条件）
+      en: The size range of RDS instances is 20 - 2000, Incrementing in every 5, unit GB. When changing the storage space, you need to meet the database specification conditions (generally not allowed to shrink or shrink to meet certain conditions)
     MinValue: 20
     MaxValue: 2000
     Default: 40

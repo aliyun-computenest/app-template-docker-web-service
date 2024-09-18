@@ -57,15 +57,6 @@ Service:
             Type: Custom
             Parameters:
               # 注释掉的：不支持更新、只对新增实例生效或者需要设置UpdatePolicy=ForAllInstances才能更新
-              - DBCategory
-              - DBInstanceClass
-              - DBInstanceStorage
-              - DBInstanceStorageType
-              # does not support update
-              # - Engine
-              # - EngineVersion
-              - DBUser
-              - DBPassword
               - HostPort
               # - EcsInstanceType
               - InternetMaxBandwidthOut
@@ -77,7 +68,19 @@ Service:
               - MaxInstanceCount
               - MinInstanceCount
               - ProvisionDatabase
+              - DBCategory
+              - DBInstanceClass
+              - DBInstanceStorage
+              - DBInstanceStorageType
+              # does not support update
+              # - Engine
+              # - EngineVersion
               - SslCertificate
+          - Name: 修改数据库账号或密码
+            Type: Custom
+            Parameters:
+              - DBUser
+              - DBPassword
   ServiceType: private
   ServiceInfo:
     Locale: zh-CN
