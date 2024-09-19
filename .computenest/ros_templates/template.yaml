@@ -787,6 +787,7 @@ Resources:
   EcsInstanceGroup:
     Type: 'ALIYUN::ECS::InstanceGroup'
     Properties:
+      UpdatePolicy: ForAllInstances
       UserData:
         Fn::Sub:
           - |-

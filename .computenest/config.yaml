@@ -43,8 +43,8 @@ Service:
     ModifyParametersConfig:
       - TemplateName: docker
         Operation:
-          - Name: 更新应用程序
-            Description: 上传zip源代码包或者从Git仓库拉取更新，滚动更新ECS实例上的应用程序
+          - Name: 更新应用程序（不支持示例应用）
+            Description: 上传zip源代码包或者从Git仓库拉取更新，滚动更新ECS实例上的应用程序。示例应用不支持更新。
             Type: Custom
             Parameters:
               - FileUrl
@@ -52,21 +52,25 @@ Service:
               - CommitHash
               - AppUpdateBatchSize
               - AppUpdatePauseTime
-          - Name: 修改部署配置
-            Description: 修改部署配置
+          - Name: 修改ECS实例配置
+            Description: 修改ECS实例配置，可能会重启ECS实例
             Type: Custom
             Parameters:
-              # 注释掉的：不支持更新、只对新增实例生效或者需要设置UpdatePolicy=ForAllInstances才能更新
+              # 注释掉的不支持更新
               - HostPort
-              # - EcsInstanceType
+              - EcsInstanceType
               - InternetMaxBandwidthOut
-              # - SystemDiskCategory
-              # - SystemDiskSize
+              - SystemDiskCategory
+              - SystemDiskSize
               # - KeyPairName
               # - BackendProtocol
               # - ListenerProtocol
               - MaxInstanceCount
               - MinInstanceCount
+          - Name: 修改数据库实例配置
+            Description: 修改数据库实例配置，可能会重启数据库实例
+            Type: Custom
+            Parameters:
               - ProvisionDatabase
               - DBCategory
               - DBInstanceClass
