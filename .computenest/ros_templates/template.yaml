@@ -63,7 +63,7 @@ Parameters:
       zh-cn: 文件地址
     Description:
       en: Select zip file to upload to oss bucket, application manager uses oss file to deploy、update or rollback your application
-      zh-cn: 选择zip文件上传到OSS bucket，应用管理使用OSS文件部署、更新或者回滚您的应用
+      zh-cn: 选择zip文件上传到OSS bucket，应用管理使用OSS文件部署、更新或者回滚您的应用。注意<font color='blue'>文件存储会产生费用</font>，您可以在OSS控制台删除不再使用的部署文件。使用OSS前需<a href="https://common-buy.aliyun.com/?commodityCode=oss">开通OSS服务</a>
     Default: ''
     AssociationProperty: UploadFilesToUserBucket
     AssociationPropertyMetadata:
