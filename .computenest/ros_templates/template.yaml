@@ -41,7 +41,8 @@ Parameters:
     Description:
       en: Read <a href='https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-87c464025ef14b3b8468?isInstance=true' target='_blank'>deployment and usage instructions</a>, learn about the requirements of application source code zip package and Git repository. The demo application uses <a href='' target='_blank'>example from Docker compose official quickstart</a>
       zh-cn: 查看<a href='https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-87c464025ef14b3b8468?isInstance=true' target='_blank'>部署和使用说明</a>，了解应用源代码zip包和Git仓库需满足的要求。示例应用采用了<a href='' target='_blank'>Docker compose官方quickstart中的示例</a>
-      - File 
+    AllowedValues:
+      - File
       - GitRepo
       - Demo
     Default: File
