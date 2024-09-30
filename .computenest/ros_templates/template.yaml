@@ -20,101 +20,37 @@ Conditions:
       Fn::Equals:
         - ''
         - Ref: KeyPairName
-  NeedInstanceRole:
-    Fn::Equals:
-      - 'File'
-      - Ref: ApplicationSource
   UsePrivateGitRepo:
-    Fn::And:
-      - Fn::Equals:
-        - 'GitRepo'
-        - Ref: ApplicationSource
-      - Fn::Equals:
-        - false
-        - Ref: IsPublicRepo
+    Fn::Equals:
+      - false
+      - Ref: IsPublicRepo
 Parameters:
-  ApplicationSource:
-    Type: String
-    Label:
-      en: Source of application
-      zh-cn: 应用来源
-    Description:
-      en: Read <a href='https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-87c464025ef14b3b8468?isInstance=true' target='_blank'>deployment and usage instructions</a>, learn about the requirements of application source code zip package and Git repository. The demo application uses <a href='' target='_blank'>example from Docker compose official quickstart</a>
-      zh-cn: 查看<a href='https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-87c464025ef14b3b8468?isInstance=true' target='_blank'>部署和使用说明</a>，了解应用源代码zip包和Git仓库需满足的要求。示例应用采用了<a href='' target='_blank'>Docker compose官方quickstart中的示例</a>
-    AllowedValues:
-      - File
-      - GitRepo
-      - Demo
-    Default: File
-    AssociationPropertyMetadata:
-      ValueLabelMapping:
-        File:
-          en: Zip File
-          zh-cn: 本地zip文件
-        GitRepo:
-          en: Git Repository
-          zh-cn: Git仓库
-        Demo:
-          en: Demo Application
-          zh-cn: 示例应用
-  FileUrl:
-    Type: String
-    Label:
-      en: File location
-      zh-cn: 文件地址
-    Description:
-      en: Select zip file to upload to oss bucket, application manager uses oss file to deploy、update or rollback your application
-      zh-cn: 选择zip文件上传到OSS，应用管理使用OSS文件（保存在bucket applicationmanager-{地域}-{主账号ID}）部署、更新或者回滚您的应用。注意<font color='blue'>文件存储会产生费用</font>，您可以在OSS控制台删除不再使用的部署文件。使用OSS前需<a href="https://common-buy.aliyun.com/?commodityCode=oss">开通OSS服务</a>
-    Default: ''
-    AssociationProperty: UploadFilesToUserBucket
-    AssociationPropertyMetadata:
-      Mode: normal
-      UploadToApplicationManager: true
-      Multiple: false
-      MaxCount: 1
-      Directory: false
-      ValueType: OSSUrl
-      ObjectNamePrefix: "artifacts/"
-      AddSuffix: true
-      SuffixFormat: YYYYMMDDHHmmss
-      Visible:
-        Condition:
-          'Fn::Equals':
-            - '${ApplicationSource}'
-            - File
   IsPublicRepo:
     Type: Boolean
     Label:
       en: Whether the git repository is public
       zh-cn: 是否公开仓库
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          'Fn::Equals':
-            - '${ApplicationSource}'
-            - GitRepo
-    Default: false
+    Description:
+      zh-cn: 如需部署示例应用请切换到公开仓库
+      en: Switch to public repository if wants to deploy sample application
+    Default: true
   PublicGitRepoUrl:
     Type: String
     Label:
       zh-cn: 公开Git仓库
       en: Public git repository
     Description:
-      zh-cn: Git clone地址，https格式（https://github.com/owner/repo.git），请注意在中国大陆地域从GitHub仓库部署可能存在网络问题
-      en: Git clone address in https format (https://github.com/owner/repo.git)
+      zh-cn: Git clone地址，https格式（https://gitee.com/owner/repo.git）。docker-web-app是示例应用，请参考<a href="https://gitee.com/betabao/docker-web-app" target='_blank'>示例应用代码库</a>。请注意在中国大陆地域从GitHub仓库部署可能存在网络问题。
+      en: Git clone address in https format (https://gitee.com/owner/repo.git). docker-web-app is sample application, please refer to <a href="https://gitee.com/betabao/docker-web-app" target='_blank'>sample application code repository</a>. Please note that network problems may occur when deploying from GitHub repository in China mainland region.
     AssociationPropertyMetadata:
       Visible:
         Condition:
-          'Fn::And':
-            - 'Fn::Equals':
-              - '${ApplicationSource}'
-              - GitRepo
-            - 'Fn::Equals':
-              - '${IsPublicRepo}'
-              - true
+          'Fn::Equals':
+            - '${IsPublicRepo}'
+            - true
     # 需要允许默认空值，这样CommitHash的AssociationProperty可以识别出用RepoUrl还是其他参数
     AllowedPattern: '^(https:\/\/[^\s]+\.git)?$'
-    Default: ""
+    Default: "https://gitee.com/betabao/docker-web-app.git"
   Platform:
     Type: String
     Label:
@@ -124,21 +60,17 @@ Parameters:
       zh-cn: 请注意在中国大陆地域从GitHub仓库部署可能存在网络问题
     Default: github
     AllowedValues:
-      - github
       - gitee
+      - github
       - gitlab
       - codeup
     AssociationProperty: ALIYUN::OOS::GitPlatform::Name
     AssociationPropertyMetadata:
       Visible:
         Condition:
-          'Fn::And':
-            - 'Fn::Equals':
-              - '${ApplicationSource}'
-              - GitRepo
-            - 'Fn::Equals':
-              - '${IsPublicRepo}'
-              - false
+          'Fn::Equals':
+            - '${IsPublicRepo}'
+            - false
   Owner:
     Type: String
     Label:
@@ -149,13 +81,9 @@ Parameters:
       Platform: '${Platform}'
       Visible:
         Condition:
-          'Fn::And':
-            - 'Fn::Equals':
-              - '${ApplicationSource}'
-              - GitRepo
-            - 'Fn::Equals':
-              - '${IsPublicRepo}'
-              - false
+          'Fn::Equals':
+            - '${IsPublicRepo}'
+            - false
     Default: ''
   Organization:
     Type: String
@@ -172,13 +100,9 @@ Parameters:
       Owner: ${Owner}
       Visible:
         Condition:
-          'Fn::And':
-            - 'Fn::Equals':
-              - '${ApplicationSource}'
-              - GitRepo
-            - 'Fn::Equals':
-              - '${IsPublicRepo}'
-              - false
+          'Fn::Equals':
+            - '${IsPublicRepo}'
+            - false
   Repository:
     Type: String
     Label:
@@ -191,26 +115,19 @@ Parameters:
       Organization: ${Organization}
       Visible:
         Condition:
-          'Fn::And':
-            - 'Fn::Equals':
-              - '${ApplicationSource}'
-              - GitRepo
-            - 'Fn::Equals':
-              - '${IsPublicRepo}'
-              - false
+          'Fn::Equals':
+            - '${IsPublicRepo}'
+            - false
     Default: ''
   Branch:
     Type: String
     Label:
       en: Branch
       zh-cn: 代码分支
+    Description:
+      en: Select branch to get latest commit hash automatically
+      zh-cn: 选定分支后自动获取分支最新的Commit Hash
     Default: 'main'
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          'Fn::Equals':
-            - '${ApplicationSource}'
-            - GitRepo
   CommitHash:
     Type: String
     Label:
@@ -228,11 +145,6 @@ Parameters:
       RepoUrl: ${PublicGitRepoUrl}
       Branch: ${Branch}
       ReadOnly: true
-      Visible:
-        Condition:
-          'Fn::Equals':
-            - '${ApplicationSource}'
-            - GitRepo
   DeployMode:
     Type: String
     Label:
@@ -401,8 +313,8 @@ Parameters:
       en: Instance Type
       zh-cn: 实例类型
     Description:
-      zh-cn: 请参考：<a href='https://help.aliyun.com/zh/ecs/use-cases/best-practices-for-instance-type-selection' target='_blank'>ECS选型最佳实践</a>
-      en: 'please refer to: <a href=''https://www.alibabacloud.com/help/en/ecs/use-cases/best-practices-for-instance-type-selection'' target=''_blank''>Best practices for selecting ECS instance types</a>'
+      zh-cn: 请参考<a href='https://help.aliyun.com/zh/ecs/use-cases/best-practices-for-instance-type-selection' target='_blank'>ECS选型最佳实践</a>
+      en: Please refer to <a href='https://www.alibabacloud.com/help/en/ecs/use-cases/best-practices-for-instance-type-selection' target='_blank'>Best practices for selecting ECS instance types</a>
     AssociationProperty: 'ALIYUN::ECS::Instance::InstanceType'
     AssociationPropertyMetadata:
       ZoneId: '${ZoneId}'
@@ -535,8 +447,11 @@ Parameters:
   SslCertificate:
     Type: String
     Label:
-      en: ALB listener HTTPS SSL certificate
-      zh-cn: 应用负载均衡监听HTTPS使用的SSL证书
+      en: Server SSL certificate
+      zh-cn: 服务器SSL证书
+    Description:
+      zh-cn: 在<a href="https://yundun.console.aliyun.com/?p=cas#/certExtend/buy/cn-hangzhou" target='_blank'>数字证书控制台</a>查看和购买SSL证书
+      en: Please refer to <a href="https://yundun.console.aliyun.com/?p=cas#/certExtend/buy/cn-hangzhou" target='_blank'>Digital Certificate Console</a> to check and buy SSL certificates
     Default: ''
     AssociationProperty: ALIYUN::CAS::Certificate::CertificateId
     AssociationPropertyMetadata:
@@ -614,8 +529,8 @@ Parameters:
     Type: String
     Default: 'mysql.n2e.medium.1'
     Description:
-      zh-cn: 请参考：<a href='https://help.aliyun.com/document_detail/26312.html' target='_blank'>RDS主实例规格</a>
-      en: 'please refer to: <a href=''https://www.alibabacloud.com/help/doc-detail/26312.html'' target=''_blank''>RDS instance specification sheet</a>'
+      zh-cn: 请参考<a href='https://help.aliyun.com/document_detail/26312.html' target='_blank'>RDS主实例规格</a>
+      en: Please refer to <a href='https://www.alibabacloud.com/help/doc-detail/26312.html' target='_blank'>RDS instance specification sheet</a>
   DBInstanceStorage:
     Label:
       zh-cn: 数据库实例存储
@@ -642,8 +557,8 @@ Parameters:
       en: Database Storage Type
     Type: String
     Description:
-      zh-cn: 实例存储类型；<br>请参见详细信息：<a href='https://help.aliyun.com/document_detail/69795.html' target='_blank'><b><font color='blue'>存储类型</font></b></a>
-      en: The storage type of DB instance; see detail <a href='https://www.alibabacloud.com/help/en/apsaradb-for-rds/latest/storage-types' target='_blank'><b><font color=''blue''>Storage types</font></b></a>'
+      zh-cn: 请参考<a href='https://help.aliyun.com/document_detail/69795.html' target='_blank'>存储类型</a>
+      en: See detail <a href='https://www.alibabacloud.com/help/en/apsaradb-for-rds/latest/storage-types' target='_blank'>Storage Types</a>
     AllowedValues:
       - local_ssd
       - cloud_ssd
@@ -759,32 +674,6 @@ Resources:
               - '${Port}/${Port}'
               - Port:
                   Ref: HostPort
-  InstanceRole:
-    Type: ALIYUN::RAM::Role
-    Condition: NeedInstanceRole
-    Properties:
-      RoleName:
-        Ref: ALIYUN::StackName
-      AssumeRolePolicyDocument:
-        Statement:
-          - Action: sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service:
-                - ecs.aliyuncs.com
-        Version: '1'
-      Policies:
-        - PolicyName:
-            Ref: ALIYUN::StackName
-          PolicyDocument:
-            Version: '1'
-            Statement:
-              - Action:
-                  - oss:GetObject
-                Resource:
-                  # arn里不能指定地域
-                  - Fn::Sub: 'acs:oss:*:${ALIYUN::TenantId}:applicationmanager-${ALIYUN::Region}-${ALIYUN::TenantId}/*'
-                Effect: Allow
   EcsInstanceGroup:
     Type: 'ALIYUN::ECS::InstanceGroup'
     Properties:
@@ -797,7 +686,7 @@ Resources:
             mkdir -p $BASE_DIR/bin $BASE_DIR/logs
             LOG=$BASE_DIR/logs/install.log
             wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O $BASE_DIR/bin/deploy_docker_web_app.sh | tee $LOG
-            bash $BASE_DIR/bin/deploy_docker_web_app.sh DEPLOY "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
+            bash $BASE_DIR/bin/deploy_docker_web_app.sh DEPLOY "GitRepo" "" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
           - DB_URL:
               Fn::If:
                 - ProvisionDatabase
@@ -844,13 +733,6 @@ Resources:
         Ref: MinInstanceCount
       InternetMaxBandwidthOut:
         Ref: InternetMaxBandwidthOut
-      RamRoleName:
-        Fn::If:
-          - NeedInstanceRole
-          - Fn::GetAtt:
-            - InstanceRole
-            - RoleName
-          - Ref: ALIYUN::NoValue
       SpotStrategy:
         Fn::If:
           - UseSpot
@@ -904,7 +786,7 @@ Resources:
             mkdir -p $BASE_DIR/bin $BASE_DIR/logs
             LOG=$BASE_DIR/logs/install.log
             wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O $BASE_DIR/bin/deploy_docker_web_app.sh | tee $LOG
-            bash $BASE_DIR/bin/deploy_docker_web_app.sh DEPLOY "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
+            bash $BASE_DIR/bin/deploy_docker_web_app.sh DEPLOY "GitRepo" "" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
           - DB_URL:
               Fn::If:
                 - ProvisionDatabase
@@ -939,13 +821,6 @@ Resources:
         Ref: EcsInstanceType
       InternetMaxBandwidthOut: 
         Ref: InternetMaxBandwidthOut
-      RamRoleName:
-        Fn::If:
-          - NeedInstanceRole
-          - Fn::GetAtt:
-            - InstanceRole
-            - RoleName
-          - Ref: ALIYUN::NoValue
       SpotStrategy:
         Fn::If:
           - UseSpot
@@ -1140,7 +1015,7 @@ Resources:
             mkdir -p $BASE_DIR/bin $BASE_DIR/logs
             LOG=$BASE_DIR/logs/update.log
             wget https://applicationmanager-public-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/deploy_docker_web_app.sh -O $BASE_DIR/bin/deploy_docker_web_app.sh | tee $LOG
-            bash $BASE_DIR/bin/deploy_docker_web_app.sh UPDATE "${ApplicationSource}" "${FileUrl}" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
+            bash $BASE_DIR/bin/deploy_docker_web_app.sh UPDATE "GitRepo" "" "${GIT_URL}" "${CommitHash}" "${DB_URL}" "${DB_PORT}" "${DBUser}" "${DBPassword}" | tee $LOG
           - DB_URL:
               Fn::If:
                 - ProvisionDatabase
@@ -1221,8 +1096,6 @@ Metadata:
   'ALIYUN::ROS::Interface':
     ParameterGroups:
       - Parameters:
-          - ApplicationSource
-          - FileUrl
           - IsPublicRepo
           - PublicGitRepoUrl
           - Platform
@@ -1231,18 +1104,18 @@ Metadata:
           - Repository
           - Branch
           - CommitHash
+          - HostPort
         Label:
           default:
             en: Application configuration
             zh-cn: 应用配置
       - Parameters:
-          - HostPort
           - AppUpdateBatchSize
           - AppUpdatePauseTime
         Label:
           default:
-            en: More application configuration
-            zh-cn: 更多应用配置
+            en: Rolling update configuration
+            zh-cn: 滚动更新配置
         DefaultExpand: false
       - Parameters:
           - DeployMode
