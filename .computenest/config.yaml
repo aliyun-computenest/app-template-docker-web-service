@@ -260,10 +260,7 @@ ImageBuilder:
         > /root/.bash_history
       }
 
-
-      clean_list=(
       clean_source_cache
-      clean_root_passwd
       clean_log
+      clean_root_passwd
       clean_cmd_history
-      )
